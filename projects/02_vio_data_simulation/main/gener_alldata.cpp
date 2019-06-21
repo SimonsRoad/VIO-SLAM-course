@@ -23,6 +23,7 @@ CreatePointsLines(std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::V
         std::getline(f,s);
         if(!s.empty())
         {
+            //每一行齐次坐标 line的两个端点
             std::stringstream ss;
             ss << s;
             double x,y,z;
