@@ -12,12 +12,12 @@ Eigen::Matrix3d euler2Rotation( Eigen::Vector3d  eulerAngles)
     double pitch = eulerAngles(1);
     double yaw = eulerAngles(2);
 
-    double cr = cos(roll); double sr = sin(roll);
+    double cr = cos(roll);  double sr = sin(roll);
     double cp = cos(pitch); double sp = sin(pitch);
-    double cy = cos(yaw); double sy = sin(yaw);
+    double cy = cos(yaw);   double sy = sin(yaw);
 
     Eigen::Matrix3d RIb;
-    RIb<< cy*cp ,   cy*sp*sr - sy*cr,   sy*sr + cy* cr*sp,
+    RIb<<   cy*cp ,   cy*sp*sr - sy*cr,   sy*sr + cy* cr*sp,
             sy*cp,    cy *cr + sy*sr*sp,  sp*sy*cr - cy*sr,
             -sp,         cp*sr,           cp*cr;
     return RIb;
@@ -32,7 +32,7 @@ Eigen::Matrix3d eulerRates2bodyRates(Eigen::Vector3d eulerAngles)
     double cp = cos(pitch); double sp = sin(pitch);
 
     Eigen::Matrix3d R;
-    R<<  1,   0,    -sp,
+    R<<     1,   0,    -sp,
             0,   cr,   sr*cp,
             0,   -sr,  cr*cp;
 
@@ -46,18 +46,20 @@ IMU::IMU(Param p): param_(p)
     acc_bias_ = Eigen::Vector3d::Zero();
 }
 
+//
 void IMU::addIMUnoise(MotionData& data)
 {
+    // 使用随机数产生噪声  均值为0 方差为1的高斯白噪声
     std::random_device rd;
     std::default_random_engine generator_(rd());
-    std::normal_distribution<double> noise(0.0, 1.0);
+    std::normal_distribution<double>  noise(0.0, 1.0);
 
     Eigen::Vector3d noise_gyro(noise(generator_),noise(generator_),noise(generator_));
-    Eigen::Matrix3d gyro_sqrt_cov = param_.gyro_noise_sigma * Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d gyro_sqrt_cov = param_.gyro_noise_sigma * Eigen::Matrix3d::Identity();  //
     data.imu_gyro = data.imu_gyro + gyro_sqrt_cov * noise_gyro / sqrt( param_.imu_timestep ) + gyro_bias_;
 
     Eigen::Vector3d noise_acc(noise(generator_),noise(generator_),noise(generator_));
-    Eigen::Matrix3d acc_sqrt_cov = param_.acc_noise_sigma * Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d acc_sqrt_cov = param_.acc_noise_sigma * Eigen::Matrix3d::Identity(); //
     data.imu_acc = data.imu_acc + acc_sqrt_cov * noise_acc / sqrt( param_.imu_timestep ) + acc_bias_;
 
     // gyro_bias update
@@ -72,6 +74,7 @@ void IMU::addIMUnoise(MotionData& data)
 
 }
 
+// 通过构造运动方差，产生IMU数据
 MotionData IMU::MotionModel(double t)
 {
 

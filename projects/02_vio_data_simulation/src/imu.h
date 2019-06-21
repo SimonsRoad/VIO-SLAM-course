@@ -14,6 +14,7 @@
 
 struct MotionData
 {
+    // 这个宏在new一个对象时会总是返回一个对齐的指针
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     double timestamp;
     Eigen::Matrix3d Rwb;
@@ -36,7 +37,7 @@ class IMU
 {
 public:
     IMU(Param p);
-    Param param_;
+    Param param_;  // IMU模型参数设定
     Eigen::Vector3d gyro_bias_;
     Eigen::Vector3d acc_bias_;
 
@@ -44,7 +45,7 @@ public:
     Eigen::Vector3d init_twb_;
     Eigen::Matrix3d init_Rwb_;
 
-    MotionData MotionModel(double t);
+    MotionData MotionModel(double t); // IMU一帧数据
 
     void addIMUnoise(MotionData& data);
     void testImu(std::string src, std::string dist);        // imu数据进行积分，用来看imu轨迹
