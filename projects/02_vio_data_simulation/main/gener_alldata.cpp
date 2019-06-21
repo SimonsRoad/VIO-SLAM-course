@@ -3,7 +3,7 @@
 //
 
 #include <fstream>
-
+#include <iostream>
 #include "../src/imu.h"
 #include "../src/utilities.h"
 
@@ -13,14 +13,24 @@
 // 将同一行的两个点存入 lines vector
 std::vector < std::pair< Eigen::Vector4d, Eigen::Vector4d > >
 CreatePointsLines(std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> >& points)
-<<<<<<< HEAD
 {
-
     std::vector < std::pair< Eigen::Vector4d, Eigen::Vector4d > > lines;
 
+    char file_path[] = "house_model/house.txt";
     std::ifstream f;
-    f.open("house_model/house.txt");
-
+    f.open(file_path);
+    try{
+        if(f.fail())
+            {
+               throw file_path;                
+            }
+    }
+    catch(char* s)
+    {
+        std::cout << "open file:" << s << " failed !" << std::endl;
+        std::cout << "Please check the file path, or open in the bin dir" << std::endl;
+        exit(1);
+    }
     while(!f.eof())
     {
         std::string s;
@@ -68,6 +78,8 @@ CreatePointsLines(std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::V
         }
     }
 
+    f.close();
+
     // create more 3d points, you can comment this code
     int n = points.size();
     for (int j = 0; j < n; ++j) {
@@ -80,76 +92,12 @@ CreatePointsLines(std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::V
     filename<<"all_points.txt";
     save_points(filename.str(),points);
     return lines;
-=======
-   {
-
-   std::vector < std::pair< Eigen::Vector4d, Eigen::Vector4d > > lines;
-
-   std::ifstream f;
-   f.open("house_model/house.txt");
-
-   while(!f.eof())
-   {
-       std::string s;
-       std::getline(f,s);
-       if(!s.empty())
-       {
-           std::stringstream ss;
-           ss << s;
-           double x,y,z;
-           ss >> x;
-           ss >> y;
-           ss >> z;
-           Eigen::Vector4d pt0( x, y, z, 1 );
-           ss >> x;
-           ss >> y;
-           ss >> z;
-           Eigen::Vector4d pt1( x, y, z, 1 );
-
-           bool isHistoryPoint = false;
-           for (int i = 0; i < points.size(); ++i) {
-               Eigen::Vector4d pt = points[i];
-               if(pt == pt0)
-               {
-                   isHistoryPoint = true;
-               }
-           }
-           if(!isHistoryPoint)
-               points.push_back(pt0);
-
-           isHistoryPoint = false;
-           for (int i = 0; i < points.size(); ++i) {
-               Eigen::Vector4d pt = points[i];
-               if(pt == pt1)
-               {
-                   isHistoryPoint = true;
-               }
-           }
-           if(!isHistoryPoint)
-               points.push_back(pt1);
-
-           // pt0 = Twl * pt0;
-           // pt1 = Twl * pt1;
-           lines.push_back( std::make_pair(pt0,pt1) );   // lines
-       }
-   }
-
-   // create more 3d points, you can comment this code
-   int n = points.size();
-   for (int j = 0; j < n; ++j) {
-       Eigen::Vector4d p = points[j] + Eigen::Vector4d(0.5,0.5,-0.5,0);
-       points.push_back(p);
-   }
-
-   // save points
-   std::stringstream filename;
-   filename<<"all_points.txt";
-   save_points(filename.str(),points);
-   return lines;
->>>>>>> 015c4dfe48aff48dcea23ecfeaed33e115ad1b82
 }
 
-int main(){
+ 
+
+int main()
+{
 
 //    Eigen::Quaterniond Qwb;
 //    Qwb.setIdentity();
@@ -172,6 +120,7 @@ int main(){
    std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > points;
    std::vector < std::pair< Eigen::Vector4d, Eigen::Vector4d > > lines;
    lines = CreatePointsLines(points);
+   std::cout << "creat points and lines" <<std::endl;
 
    // IMU model
    Param params;
@@ -201,6 +150,8 @@ int main(){
    imuGen.testImu("imu_pose.txt", "imu_int_pose.txt");     // test the imu data, integrate the imu data to generate the imu trajecotry
    imuGen.testImu("imu_pose_noise.txt", "imu_int_pose_noise.txt");
 
+    std::cout << "gentrate IMU data" <<std::endl;
+
    // cam pose
    std::vector< MotionData > camdata;
    for (float t = params.t_start; t<params.t_end;) {
@@ -217,6 +168,7 @@ int main(){
    }
    save_Pose("cam_pose.txt",camdata);
    save_Pose_asTUM("cam_pose_tum.txt",camdata);
+    std::cout << "gentrate cam data" <<std::endl;
 
    // points obs in image
    for(int n = 0; n < camdata.size(); ++n)
@@ -285,5 +237,5 @@ int main(){
    }
 
 
-   return 1;
+   return 0;
 }
