@@ -71,17 +71,17 @@ for i in range(0,400,5):
     for j in range(len(rpy)):
         drawCoordinateFrame(ax, rpy[j], t[j])    
     
-    s = filepath + '/keyframe/all_points_' +str(i)+'.txt'
-    with open(s, 'r') as f:   
-        data = f.readlines()  #txt中所有字符串读入data  
-        for line in data:  
-            odom = line.split()        #将单个数据分隔开存好  
-            numbers_float = map(float, odom) #转化为浮点数  
-            x1.append( numbers_float[0] )
-            y1.append( numbers_float[1] )
-            z1.append( numbers_float[2] )
+    # s = filepath + '/keyframe/all_points_' +str(i)+'.txt'
+    # with open(s, 'r') as f:   
+    #     data = f.readlines()  #txt中所有字符串读入data  
+    #     for line in data:  
+    #         odom = line.split()        #将单个数据分隔开存好  
+    #         numbers_float = map(float, odom) #转化为浮点数  
+    #         x1.append( numbers_float[0] )
+    #         y1.append( numbers_float[1] )
+    #         z1.append( numbers_float[2] )
             
-            ax.plot( [ numbers_float[0],   p[0]  ] , [ numbers_float[1], p[1] ] , zs=[ numbers_float[2], p[2] ] )
+    #         ax.plot( [ numbers_float[0],   p[0]  ] , [ numbers_float[1], p[1] ] , zs=[ numbers_float[2], p[2] ] )
 
     s = filepath + '/house_model/house.txt'
     with open(s, 'r') as f:

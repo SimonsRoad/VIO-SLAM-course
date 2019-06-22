@@ -102,14 +102,15 @@ MotionData IMU::MotionModel(double t)
 //    Eigen::Vector3d eulerAngles(0.0,0.0, K*t );   // roll ~ 0, pitch ~ 0, yaw ~ [0,2pi]
 //    Eigen::Vector3d eulerAnglesRates(0.,0. , K);      // euler angles 的导数
 
-    Eigen::Matrix3d Rwb = euler2Rotation(eulerAngles);         // body frame to world frame
-    Eigen::Vector3d imu_gyro = eulerRates2bodyRates(eulerAngles) * eulerAnglesRates;   //  euler rates trans to body gyro
+    Eigen::Matrix3d Rwb = euler2Rotation(eulerAngles);         // body frame to world frame 欧拉角到旋转矩阵的变换
+    Eigen::Vector3d imu_gyro = eulerRates2bodyRates(eulerAngles) * eulerAnglesRates;   //  euler rates trans to body gyro 欧拉角速度到 IMU body角速度
 
     Eigen::Vector3d gn (0,0,-9.81);                                   //  gravity in navigation frame(ENU)   ENU (0,0,-9.81)  NED(0,0,9,81)
     Eigen::Vector3d imu_acc = Rwb.transpose() * ( ddp -  gn );  //  Rbw * Rwn * gn = gs
 
-    data.imu_gyro = imu_gyro;
-    data.imu_acc = imu_acc;
+    // 模拟的IMUacc gyro 真值 以及对应的ground truth position and oriention
+    data.imu_gyro = imu_gyro; 
+    data.imu_acc = imu_acc; 
     data.Rwb = Rwb;
     data.twb = position;
     data.imu_velocity = dp;
@@ -133,8 +134,7 @@ void IMU::testImu(std::string src, std::string dist)
     Eigen::Quaterniond Qwb(init_Rwb_);            // quaterniond:  from imu measurements
     Eigen::Vector3d Vw = init_velocity_;          // velocity  :   from imu measurements
     Eigen::Vector3d gw(0,0,-9.81);    // ENU frame
-    Eigen::Vector3d temp_a;
-    Eigen::Vector3d theta;
+
     for (int i = 1; i < imudata.size(); ++i) {
 
         MotionData imupose = imudata[i];
@@ -174,7 +174,144 @@ void IMU::testImu(std::string src, std::string dist)
                    <<std::endl;
 
     }
-
+    save_points.close();
     std::cout<<"test　end"<<std::endl;
 
 }
+
+void IMU::testImu_eulerIntegration(std::string src, std::string dist)
+{
+    std::vector<MotionData>imudata;
+    LoadPose(src,imudata);
+
+    std::ofstream save_points;
+    save_points.open(dist);
+
+    double dt = param_.imu_timestep;
+    Eigen::Vector3d Pwb = init_twb_;              // position :    from  imu measurements
+    Eigen::Quaterniond Qwb(init_Rwb_);            // quaterniond:  from imu measurements
+    Eigen::Vector3d Vw = init_velocity_;          // velocity  :   from imu measurements
+
+    for (int i = 1; i < imudata.size(); ++i) { 
+        MotionData imupose = imudata[i];
+        eulerIntegration(dt,
+                         imupose.imu_acc, imupose.imu_gyro,
+                         imupose.imu_acc_bias, imupose.imu_gyro_bias,
+                         Pwb, Qwb, Vw // current of updated
+                            );
+        //　按着imu postion, imu quaternion , cam postion, cam quaternion 的格式存储，由于没有cam，所以imu存了两次
+        save_points<<imupose.timestamp<<" "
+                   <<Qwb.w()<<" "
+                   <<Qwb.x()<<" "
+                   <<Qwb.y()<<" "
+                   <<Qwb.z()<<" "
+                   <<Pwb(0)<<" "
+                   <<Pwb(1)<<" "
+                   <<Pwb(2)<<" "
+                   <<Qwb.w()<<" "
+                   <<Qwb.x()<<" "
+                   <<Qwb.y()<<" "
+                   <<Qwb.z()<<" "
+                   <<Pwb(0)<<" "
+                   <<Pwb(1)<<" "
+                   <<Pwb(2)<<" "
+                   <<std::endl;
+    }   
+    std::cout<<"test　end of eulerIntegration"<<std::endl;
+    save_points.close();
+}
+
+
+void IMU::testImu_midPointIntegration(std::string src, std::string dist)
+{
+    std::vector<MotionData>imudata;
+    LoadPose(src,imudata);
+
+    std::ofstream save_points;
+    save_points.open(dist);
+
+    double dt = param_.imu_timestep;
+    Eigen::Vector3d    Pwb = init_twb_;              // position :    from  imu measurements
+    Eigen::Quaterniond Qwb(init_Rwb_);            // quaterniond:  from imu measurements
+    Eigen::Vector3d Vw = init_velocity_;          // velocity  :   from imu measurements
+
+    Eigen::Vector3d last_acc = imudata[0].imu_acc;
+    Eigen::Vector3d last_gyro = imudata[0].imu_gyro;
+
+    for (int i = 1; i < imudata.size(); ++i) { 
+        MotionData imupose = imudata[i];
+        midPointIntegration(dt,
+                         last_acc, last_gyro,
+                         imupose.imu_acc, imupose.imu_gyro,
+                         imupose.imu_acc_bias, imupose.imu_gyro_bias,
+                         Pwb, Qwb, Vw // current of updated
+                            );
+
+        last_acc = imupose.imu_acc;
+        last_gyro = imupose.imu_gyro;
+        //　按着imu postion, imu quaternion , cam postion, cam quaternion 的格式存储，由于没有cam，所以imu存了两次
+        save_points<<imupose.timestamp<<" "
+                   <<Qwb.w()<<" "
+                   <<Qwb.x()<<" "
+                   <<Qwb.y()<<" "
+                   <<Qwb.z()<<" "
+                   <<Pwb(0)<<" "
+                   <<Pwb(1)<<" "
+                   <<Pwb(2)<<" "
+                   <<Qwb.w()<<" "
+                   <<Qwb.x()<<" "
+                   <<Qwb.y()<<" "
+                   <<Qwb.z()<<" "
+                   <<Pwb(0)<<" "
+                   <<Pwb(1)<<" "
+                   <<Pwb(2)<<" "
+                   <<std::endl;
+    }   
+    std::cout<<"test　end of midPointIntegration"<<std::endl;
+    save_points.close();
+}
+
+
+void IMU::eulerIntegration(double _dt, 
+                      const Eigen::Vector3d &acc_k,    const Eigen::Vector3d &gyro_k,     // 第k帧 IMU data
+                      const Eigen::Vector3d &acc_bias, const Eigen::Vector3d &gyro_bias,  // IMU 偏置项，这里假定为常数
+                      Eigen::Vector3d &delta_p,  Eigen::Quaterniond &delta_q,  Eigen::Vector3d &delta_v //前一帧result,以及updated当前帧积分result
+                      )
+{
+    Eigen::Vector3d  un_gyro = gyro_k - gyro_bias;  //  w = gyro_body - gyro_bias
+    //  △q  delta_q = [1 , 1/2 * thetax , 1/2 * theta_y, 1/2 * theta_z]
+    delta_q = delta_q * Eigen::Quaterniond(1, un_gyro(0)*_dt/2, un_gyro(1)*_dt/2, un_gyro(2)*_dt/2);
+
+    Eigen::Vector3d gw(0,0,-9.81);    // ENU frame
+    Eigen::Vector3d un_acc = delta_q.toRotationMatrix() * (acc_k) + gw;  // aw = Rwb * ( acc_body - acc_bias ) + gw
+
+    // △v
+    delta_v = delta_v + un_acc*_dt;
+    
+    // △p
+    delta_p = delta_p + delta_v*_dt + 0.5*un_acc*_dt*_dt;
+}    
+
+void IMU::midPointIntegration(double _dt, 
+                         const Eigen::Vector3d &acc_0,    const Eigen::Vector3d &gyro_0,
+                         const Eigen::Vector3d &acc_1,    const Eigen::Vector3d &gyro_1,
+                         const Eigen::Vector3d &acc_bias, const Eigen::Vector3d &gyro_bias,
+                         Eigen::Vector3d &delta_p, Eigen::Quaterniond &delta_q, Eigen::Vector3d &delta_v
+                        )
+{
+    Eigen::Vector3d un_gyro = 0.5 * (gyro_0 + gyro_1) - gyro_bias;
+    delta_q = delta_q * Eigen::Quaterniond(1, un_gyro(0)*_dt/2, un_gyro(1)*_dt/2, un_gyro(2)*_dt/2);
+
+    Eigen::Vector3d gw(0,0,-9.81);    // ENU frame
+    Eigen::Vector3d un_acc_0 = delta_q.toRotationMatrix() * (acc_0 - acc_bias) + gw;
+    Eigen::Vector3d un_acc_1 = delta_q.toRotationMatrix() * (acc_1 - acc_bias) + gw;
+    Eigen::Vector3d un_acc = 0.5 * (un_acc_0 + un_acc_1);
+
+    // △v
+    delta_v = delta_v + un_acc*_dt;
+    
+    // △p
+    delta_p = delta_p + delta_v*_dt + 0.5*un_acc*_dt*_dt;
+
+}
+

@@ -25,6 +25,7 @@ quaterntions = []
 timestamp = []
 tx_index = 5
 
+## imu_pose
 with open(filepath + '/imu_pose.txt', 'r') as f:  # imu_circle   imu_spline
 
     data = f.readlines()  # txt中所有字符串读入data
@@ -37,7 +38,8 @@ with open(filepath + '/imu_pose.txt', 'r') as f:  # imu_circle   imu_spline
 position1 = []
 quaterntions1 = []
 timestamp1 = []
-with open(filepath + '/imu_int_pose.txt', 'r') as f:  # imu_pose   imu_spline
+## imu_int_pose_eulerIntegraton
+with open(filepath + '/imu_int_pose_eulerIntegraton.txt', 'r') as f:  # imu_pose   imu_spline
 
     data = f.readlines()  # txt中所有字符串读入data
     for line in data:
@@ -51,7 +53,7 @@ with open(filepath + '/imu_int_pose.txt', 'r') as f:  # imu_pose   imu_spline
 position2 = []
 quaterntions2 = []
 timestamp2 = []
-with open(filepath + '/imu_int_pose_noise.txt', 'r') as f:  # cam_pose_opt_o_0   cam_pose_opt_o_0
+with open(filepath + '/imu_int_pose_midPointIntegration.txt', 'r') as f: 
 
     data = f.readlines()  # txt中所有字符串读入data
     for line in data:
@@ -71,8 +73,8 @@ xyz1 = zip(*position1)
 xyz2 = zip(*position2)
 print
 ax.plot(xyz[0], xyz[1], xyz[2], label='gt')
-ax.plot(xyz1[0], xyz1[1], xyz1[2], label='imu_int')
-# ax.plot(xyz2[0], xyz2[1], xyz2[2], label='noise')
+ax.plot(xyz1[0], xyz1[1], xyz1[2], label='imu_eulerInteg')
+ax.plot(xyz2[0], xyz2[1], xyz2[2], label='imu_midPointInteg')
 ax.legend()
 
 ax.set_xlabel('X')

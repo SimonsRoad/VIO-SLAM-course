@@ -131,12 +131,12 @@ int main()
    std::vector< MotionData > imudata;
    std::vector< MotionData > imudata_noise;
    for (float t = params.t_start; t<params.t_end;) {
-       MotionData data = imuGen.MotionModel(t);
+       MotionData data = imuGen.MotionModel(t); //每一个时间戳t,对应一帧数据包括 设定的位姿以及模拟产生的IMU数据(真值，不带噪声)
        imudata.push_back(data);
 
        // add imu noise
        MotionData data_noise = data;
-       imuGen.addIMUnoise(data_noise);
+       imuGen.addIMUnoise(data_noise); // 给模拟的IMU数据添加噪声 ==> noise and bias
        imudata_noise.push_back(data_noise);
 
        t += 1.0/params.imu_frequency;
@@ -144,11 +144,16 @@ int main()
    imuGen.init_velocity_ = imudata[0].imu_velocity;
    imuGen.init_twb_ = imudata.at(0).twb;
    imuGen.init_Rwb_ = imudata.at(0).Rwb;
-   save_Pose("imu_pose.txt",imudata);
-   save_Pose("imu_pose_noise.txt",imudata_noise);
+   save_Pose("imu_pose.txt",imudata); // 真值数据
+   save_Pose("imu_pose_noise.txt",imudata_noise); // 带噪声数据
 
+   // 利用积分，通过IMU raw data计算位姿
    imuGen.testImu("imu_pose.txt", "imu_int_pose.txt");     // test the imu data, integrate the imu data to generate the imu trajecotry
    imuGen.testImu("imu_pose_noise.txt", "imu_int_pose_noise.txt");
+
+   imuGen.testImu_eulerIntegration("imu_pose.txt", "imu_int_pose_eulerIntegraton.txt");
+   imuGen.testImu_midPointIntegration("imu_pose.txt", "imu_int_pose_midPointIntegration.txt");
+
 
     std::cout << "gentrate IMU data" <<std::endl;
 
