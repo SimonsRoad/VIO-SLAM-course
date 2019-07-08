@@ -10,6 +10,7 @@ namespace backend {
 
 unsigned long global_edge_id = 0;
 
+// 定义一条边
 Edge::Edge(int residual_dimension, int num_verticies,
            const std::vector<std::string> &verticies_types) {
     residual_.resize(residual_dimension, 1);
@@ -23,8 +24,6 @@ Edge::Edge(int residual_dimension, int num_verticies,
     information.setIdentity();
     information_ = information;
 
-//    cout<<"Edge construct residual_dimension="<<residual_dimension
-//            << ", num_verticies="<<num_verticies<<", id_="<<id_<<endl;
 }
 
 Edge::~Edge() {}

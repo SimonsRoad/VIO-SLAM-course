@@ -118,6 +118,7 @@ private:
     /// 检查ordering是否正确
     bool CheckOrdering();
 
+    // logout the num of verticies and edges
     void LogoutVectorSize();
 
     /// 获取某个顶点连接到的边
@@ -138,8 +139,8 @@ private:
     /// PCG 迭代线性求解器
     VecX PCGSolver(const MatXX &A, const VecX &b, int maxIter);
 
-    double currentLambda_;
-    double currentChi_;
+    double currentLambda_;// LM阻尼因子u
+    double currentChi_;  //最小二乘的残差
     double stopThresholdLM_;    // LM 迭代退出阈值条件
     double ni_;                 //控制 Lambda 缩放大小
 
@@ -152,7 +153,7 @@ private:
 
     /// 先验部分信息
     MatXX H_prior_;
-    VecX b_prior_;
+    VecX   b_prior_;
     MatXX Jt_prior_inv_;
     VecX err_prior_;
 
@@ -185,8 +186,12 @@ private:
     HashVertex verticies_marg_;
 
     bool bDebug = false;
-    double t_hessian_cost_ = 0.0;
+    double t_hessian_cost_ = 0.0; //计时
     double t_PCGsovle_cost_ = 0.0;
+
+    std::vector<double> lambda_list;
+    std::vector<double> residuals_sumSqr_list;
+    std::vector<int> time_list;
 };
 
 }
