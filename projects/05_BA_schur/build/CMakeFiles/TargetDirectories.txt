@@ -1,0 +1,14 @@
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/CMakeFiles/edit_cache.dir
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/CMakeFiles/rebuild_cache.dir
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/frontend/CMakeFiles/edit_cache.dir
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/frontend/CMakeFiles/rebuild_cache.dir
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/frontend/CMakeFiles/slam_course_frontend.dir
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/backend/CMakeFiles/edit_cache.dir
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/backend/CMakeFiles/rebuild_cache.dir
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/backend/CMakeFiles/slam_course_backend.dir
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/utils/CMakeFiles/edit_cache.dir
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/utils/CMakeFiles/rebuild_cache.dir
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/app/CMakeFiles/rebuild_cache.dir
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/app/CMakeFiles/testCurveFitting.dir
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/app/CMakeFiles/edit_cache.dir
+/home/ubuntu/coding/VIO-SLAM-course/projects/05_BA_schur/build/app/CMakeFiles/testMonoBA.dir

@@ -222,7 +222,7 @@ void Problem::MakeHessian()
             ulong index_i = v_i->OrderingId();
             ulong dim_i = v_i->LocalDimension();
 
-            MatXX JtW = jacobian_i.transpose() * edge.second->Information(); //信息矩阵是什么？
+            MatXX JtW = jacobian_i.transpose() * edge.second->Information(); //信息矩阵是什么
             for (size_t j = i; j < verticies.size(); ++j)
             {
                 auto v_j = verticies[j];
@@ -377,8 +377,8 @@ bool Problem::IsGoodStepInLM()
         std::cout << "bad update" << std::endl;
         currentLambda_ *= ni_;
         ni_ *= 2;
-        // lambda_list.push_back(currentLambda_);
-        // residuals_sumSqr_list.push_back(currentChi_);        
+        lambda_list.push_back(currentLambda_);
+        residuals_sumSqr_list.push_back(currentChi_);        
         return false;
     }
 }
@@ -386,7 +386,8 @@ bool Problem::IsGoodStepInLM()
 /** @brief conjugate gradient with perconditioning
 *
 *  the jacobi PCG method
-*
+* 　PCG　共轭梯度算法　使用迭代算法，求解　Ａx=b
+*   A n*n　对称正定矩阵
 */
 VecX Problem::PCGSolver(const MatXX &A, const VecX &b, int maxIter = -1)
 {
