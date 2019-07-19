@@ -76,11 +76,15 @@ int main()
     Problem problem(Problem::ProblemType::SLAM_PROBLEM);
 
     // 所有 Pose
+    std::default_random_engine generator;
+    std::normal_distribution<double> noise_pdf(0, 1.);
     vector<shared_ptr<VertexPose>> vertexCams_vec;
+    vector<Eigen::VectorXd> CamPose_noise;
     for (size_t i = 0; i < cameras.size(); ++i)
     {
         shared_ptr<VertexPose> vertexCam(new VertexPose());
         Eigen::VectorXd pose(7);
+        Eigen::VectorXd pose_noise(7);//添加噪声的Pose
         pose << cameras[i].twc, cameras[i].qwc.x(), cameras[i].qwc.y(), cameras[i].qwc.z(), cameras[i].qwc.w();
         vertexCam->SetParameters(pose);
 
@@ -92,8 +96,6 @@ int main()
     }
 
     // 所有 Point 及 edge
-    std::default_random_engine generator;
-    std::normal_distribution<double> noise_pdf(0, 1.);
     double noise = 0;
     vector<double> noise_invd;
     vector<shared_ptr<VertexInverseDepth>> allPoints;
@@ -142,7 +144,7 @@ int main()
                   << noise_invd[k] << " \t  opt " << allPoints[k]->Parameters() << std::endl;
     }
     std::cout << "------------ pose translation ----------------" << std::endl;
-    for (int i = 0; i < vertexCams_vec.size(); ++i)
+    for (std::size_t i = 0; i < vertexCams_vec.size(); ++i)
     {
         std::cout << "translation after opt: " << i << " :\t" << vertexCams_vec[i]->Parameters().head(3).transpose() << " || \t gt: " << cameras[i].twc.transpose() << std::endl;
     }
