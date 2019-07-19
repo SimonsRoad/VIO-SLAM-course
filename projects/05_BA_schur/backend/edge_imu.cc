@@ -6,13 +6,16 @@
 
 #include <iostream>
 
-namespace myslam {
-namespace backend {
+namespace myslam
+{
+namespace backend
+{
 using Sophus::SO3d;
 
 Vec3 EdgeImu::gravity_ = Vec3(0, 0, 9.8);
 
-void EdgeImu::ComputeResidual() {
+void EdgeImu::ComputeResidual()
+{
     VecX param_0 = verticies_[0]->Parameters();
     Qd qi(param_0[6], param_0[3], param_0[4], param_0[5]);
     Vec3 pi = param_0.head<3>();
@@ -49,7 +52,8 @@ void EdgeImu::ComputeResidual() {
     residual_.block<3, 1>(12, 0) = bgj - bgi;
 }
 
-void EdgeImu::ComputeJacobians() {
+void EdgeImu::ComputeJacobians()
+{
 
     VecX param_0 = verticies_[0]->Parameters();
     Qd qi(param_0[6], param_0[3], param_0[4], param_0[5]);
@@ -134,5 +138,5 @@ void EdgeImu::ComputeJacobians() {
     jacobians_[3] = jacobian_speedbias_j;
 }
 
-}
-}
+} // namespace backend
+} // namespace myslam

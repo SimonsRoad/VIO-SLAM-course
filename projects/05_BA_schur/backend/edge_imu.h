@@ -9,20 +9,25 @@
 #include "backend/edge.h"
 #include "backend/imu_integration.h"
 
-namespace myslam {
-namespace backend {
+namespace myslam
+{
+namespace backend
+{
 
 /**
  * 此边是IMU误差，此边为4元边，与之相连的顶点有：Pi Mi Pj Mj
  */
-class EdgeImu : public Edge {
+class EdgeImu : public Edge
+{
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
     explicit EdgeImu(std::shared_ptr<IMUIntegration> pre_integration)
         : pre_integration_(pre_integration),
-          Edge(15, 4, std::vector<std::string>{"VertexPose", "VertexMotion", "VertexPose", "VertexMotion"}) {
-        if (pre_integration_) {
+          Edge(15, 4, std::vector<std::string>{"VertexPose", "VertexMotion", "VertexPose", "VertexMotion"})
+    {
+        if (pre_integration_)
+        {
             pre_integration_->GetJacobians(dr_dbg_, dv_dbg_, dv_dba_, dp_dbg_, dp_dba_);
             Mat99 cov_meas = pre_integration_->GetCovarianceMeasurement();
             Mat66 cov_rand_walk = pre_integration_->GetCovarianceRandomWalk();
@@ -42,7 +47,8 @@ public:
     /// 计算雅可比
     virtual void ComputeJacobians() override;
 
-    static void SetGravity(const Vec3 &g) {
+    static void SetGravity(const Vec3 &g)
+    {
         gravity_ = g;
     }
 
@@ -57,6 +63,6 @@ private:
     Mat33 dv_dbg_ = Mat33::Zero();
 };
 
-}
-}
+} // namespace backend
+} // namespace myslam
 #endif

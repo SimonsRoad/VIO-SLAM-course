@@ -4,8 +4,10 @@
 #include <memory>
 #include "backend/vertex.h"
 
-namespace myslam {
-namespace backend {
+namespace myslam
+{
+namespace backend
+{
 
 /**
  * Pose vertex
@@ -14,7 +16,8 @@ namespace backend {
  *
  * pose is represented as Twb in VIO case
  */
-class VertexPose : public Vertex {
+class VertexPose : public Vertex
+{
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
@@ -22,9 +25,10 @@ public:
 
     /// 加法，可重定义
     /// 默认是向量加
-    virtual void Plus(const VecX &delta) override;
+    virtual void Plus(const VecX &delta) override;//显式　重写虚函数
 
-    std::string TypeInfo() const {
+    std::string TypeInfo() const
+    {
         return "VertexPose";
     }
 
@@ -37,13 +41,13 @@ public:
      *                         
      *                         Hm2_m2               |    bm2
      *                                   Hm2_m3     |    bm3
-     * 1. 若该Camera为source camera，则维护vHessionSourceCamera；
-     * 2. 若该Camera为measurement camera, 则维护vHessionMeasurementCamera；
-     * 3. 并一直维护m_HessionDiagonal；
+     * 1. 若该Camera为source camera，则维护 vHessionSourceCamera；
+     * 2. 若该Camera为measurement camera, 则维护　vHessionMeasurementCamera；
+     * 3. 并一直维护 m_HessionDiagonal；
      */
 };
 
-}
-}
+} // namespace backend
+} // namespace myslam
 
 #endif

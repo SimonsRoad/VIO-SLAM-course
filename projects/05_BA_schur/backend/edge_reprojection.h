@@ -9,21 +9,27 @@
 #include "backend/eigen_types.h"
 #include "backend/edge.h"
 
-namespace myslam {
-namespace backend {
+namespace myslam
+{
+namespace backend
+{
 
 /**
  * 此边是视觉重投影误差，此边为三元边，与之相连的顶点有：
- * 路标点的逆深度InveseDepth、第一次观测到该路标点的source Camera的位姿T_World_From_Body1，
- * 和观测到该路标点的mearsurement Camera位姿T_World_From_Body2。
+ *  - 路标点的逆深度InveseDepth、
+ *  - 第一次观测到该路标点的source Camera的位姿T_World_From_Body1，
+ *  - 观测到该路标点的 mearsurement Camera位姿T_World_From_Body2。
  * 注意：verticies_顶点顺序必须为InveseDepth、T_World_From_Body1、T_World_From_Body2。
  */
-class EdgeReprojection : public Edge {
+class EdgeReprojection : public Edge
+{
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
     EdgeReprojection(const Vec3 &pts_i, const Vec3 &pts_j)
-        : Edge(2, 3, std::vector<std::string>{"VertexInverseDepth", "VertexPose", "VertexPose"}) {
+        : Edge(2, 3, std::vector<std::string>{"VertexInverseDepth", "VertexPose", "VertexPose"})
+        // redidual_dim=2, num_verticies=3
+    {
         pts_i_ = pts_i;
         pts_j_ = pts_j;
     }
@@ -50,15 +56,19 @@ private:
 
 /**
 * 此边是视觉重投影误差，此边为二元边，与之相连的顶点有：
-* 路标点的世界坐标系XYZ、观测到该路标点的 Camera 的位姿T_World_From_Body1
+*   - 路标点的世界坐标系XYZ、
+*   - 观测到该路标点的 Camera 的位姿T_World_From_Body1
 * 注意：verticies_顶点顺序必须为 XYZ、T_World_From_Body1。
 */
-class EdgeReprojectionXYZ : public Edge {
+class EdgeReprojectionXYZ : public Edge
+{
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
     EdgeReprojectionXYZ(const Vec3 &pts_i)
-        : Edge(2, 2, std::vector<std::string>{"VertexXYZ", "VertexPose"}) {
+        : Edge(2, 2, std::vector<std::string>{"VertexXYZ", "VertexPose"})
+        // redidual_dim=2, num_verticies=2
+    {
         obs_ = pts_i;
     }
 
@@ -85,13 +95,13 @@ private:
 /**
  * 仅计算重投影pose的例子
  */
-class EdgeReprojectionPoseOnly : public Edge {
+class EdgeReprojectionPoseOnly : public Edge
+{
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
-    EdgeReprojectionPoseOnly(const Vec3 &landmark_world, const Mat33 &K) :
-        Edge(2, 1, std::vector<std::string>{"VertexPose"}),
-        landmark_world_(landmark_world), K_(K) {}
+    EdgeReprojectionPoseOnly(const Vec3 &landmark_world, const Mat33 &K) : Edge(2, 1, std::vector<std::string>{"VertexPose"}),
+                                                                           landmark_world_(landmark_world), K_(K) {}
 
     /// 返回边的类型信息
     virtual std::string TypeInfo() const override { return "EdgeReprojectionPoseOnly"; }
@@ -107,7 +117,7 @@ private:
     Mat33 K_;
 };
 
-}
-}
+} // namespace backend
+} // namespace myslam
 
 #endif

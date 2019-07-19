@@ -11,12 +11,14 @@
 
 typedef unsigned long ulong;
 
-namespace myslam {
-namespace backend {
+namespace myslam
+{
+namespace backend
+{
 
-class Problem {
+class Problem
+{
 public:
-
     /**
      * 问题的类型
      * SLAM问题还是通用的问题
@@ -25,15 +27,16 @@ public:
      * SLAM问题只接受一些特定的Vertex和Edge
      * 如果是通用问题那么hessian是稠密的，除非用户设定某些vertex为marginalized
      */
-    enum class ProblemType {
+    enum class ProblemType
+    {
         SLAM_PROBLEM,
         GENERIC_PROBLEM
     };
     typedef unsigned long ulong;
-//    typedef std::unordered_map<unsigned long, std::shared_ptr<Vertex>> HashVertex;
-    typedef std::map<unsigned long, std::shared_ptr<Vertex>> HashVertex;
-    typedef std::unordered_map<unsigned long, std::shared_ptr<Edge>> HashEdge;
-    typedef std::unordered_multimap<unsigned long, std::shared_ptr<Edge>> HashVertexIdToEdge;
+    //    typedef std::unordered_map<unsigned long, std::shared_ptr<Vertex>> HashVertex;
+    typedef std::map<unsigned long, std::shared_ptr<Vertex>> HashVertex;                      //all Vertexes
+    typedef std::unordered_map<unsigned long, std::shared_ptr<Edge>> HashEdge;                // all Edges
+    typedef std::unordered_multimap<unsigned long, std::shared_ptr<Edge>> HashVertexIdToEdge; //from vertex get edge
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
@@ -76,7 +79,6 @@ public:
     void TestMarginalize();
 
 private:
-
     /// Solve的实现，解通用问题
     bool SolveGenericProblem(int iterations);
 
@@ -140,8 +142,8 @@ private:
 
     double currentLambda_;
     double currentChi_;
-    double stopThresholdLM_;    // LM 迭代退出阈值条件
-    double ni_;                 //控制 Lambda 缩放大小
+    double stopThresholdLM_; // LM 迭代退出阈值条件
+    double ni_;              //控制 Lambda 缩放大小
 
     ProblemType problemType_;
 
@@ -178,8 +180,8 @@ private:
     ulong ordering_poses_ = 0;
     ulong ordering_landmarks_ = 0;
     ulong ordering_generic_ = 0;
-    std::map<unsigned long, std::shared_ptr<Vertex>> idx_pose_vertices_;        // 以ordering排序的pose顶点
-    std::map<unsigned long, std::shared_ptr<Vertex>> idx_landmark_vertices_;    // 以ordering排序的landmark顶点
+    std::map<unsigned long, std::shared_ptr<Vertex>> idx_pose_vertices_;     // 以ordering排序的pose顶点
+    std::map<unsigned long, std::shared_ptr<Vertex>> idx_landmark_vertices_; // 以ordering排序的landmark顶点
 
     // verticies need to marg. <Ordering_id_, Vertex>
     HashVertex verticies_marg_;
@@ -189,7 +191,7 @@ private:
     double t_PCGsovle_cost_ = 0.0;
 };
 
-}
-}
+} // namespace backend
+} // namespace myslam
 
 #endif

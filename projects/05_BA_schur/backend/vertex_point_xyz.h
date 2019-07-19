@@ -3,13 +3,16 @@
 
 #include "backend/vertex.h"
 
-namespace myslam {
-namespace backend {
+namespace myslam
+{
+namespace backend
+{
 
 /**
  * @brief 以xyz形式参数化的顶点
  */
-class VertexPointXYZ : public Vertex {
+class VertexPointXYZ : public Vertex
+{
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
@@ -18,7 +21,9 @@ public:
     std::string TypeInfo() const { return "VertexPointXYZ"; }
 };
 
-}
-}
+// add 直接数值加法
+
+} // namespace backend
+} // namespace myslam
 
 #endif

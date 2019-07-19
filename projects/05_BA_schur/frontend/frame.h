@@ -13,10 +13,13 @@
 #include "sophus/so3.hpp"
 #include "sophus/se3.hpp"
 
-namespace myslam {
-namespace frontend {
+namespace myslam
+{
+namespace frontend
+{
 
-struct Frame {
+struct Frame
+{
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
 private:
@@ -38,7 +41,7 @@ private:
     Vec9 speed_and_bias_states = Vec9::Zero();
 };
 
-}
-}
+} // namespace frontend
+} // namespace myslam
 
 #endif //SLAM_COURSE_FRAME_H
