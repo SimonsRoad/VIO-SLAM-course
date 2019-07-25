@@ -78,13 +78,13 @@ int main()
         std::cout << "Twc: \r\n" << Twc << std::endl;
 
         Eigen::Matrix4d Tcw = Twc.inverse();
-        std::cout << "Tcw: \r\n" << Twc << std::endl;
+        std::cout << "Tcw: \r\n" << Tcw << std::endl;
 
 
-        Eigen::Matrix<double,3,4> projection_k;
-        projection_k.block(0, 0, 3, 3) = Tcw.block(0, 0, 3, 3);
-        projection_k.block(0, 3, 3, 1) = Tcw.block(0, 0, 3, 3);
-        projectionMatrix.push_back(projection_k);
+        // Eigen::Matrix<double,3,4> projection_k;
+        // projection_k.block(0, 0, 3, 3) = Tcw.block(0, 0, 3, 3);
+        // projection_k.block(0, 3, 3, 1) = Tcw.block(0, 0, 3, 3);
+        // projectionMatrix.push_back(projection_k);
     }
 
     /* your code end */
