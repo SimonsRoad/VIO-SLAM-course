@@ -103,8 +103,12 @@ int main()
     std::cout << "svd matrixU \r\n"  << svd.matrixU() << std::endl;
     std::cout << "svd matrixV \r\n"  << svd.matrixV() << std::endl;
 
-    std::cout << "output \r\n" << svd.matrixV()*Eigen::Vector4d(0,0,0,1);
-    
+    std::cout << "output \r\n" << svd.matrixV()*Eigen::Vector4d(0,0,0,1)<<std::endl;
+
+    Eigen::Vector4d temp = svd.matrixV()*Eigen::Vector4d(0,0,0,1);
+    temp = temp/temp.w();
+    std::cout << "output \r\n" << temp <<std::endl;
+
 
     // Eigen::Vector4d rfh(0,0,0,1);
     // std::cout << "the solved: \r\n" << svd.solve(rfh) << std::endl;
