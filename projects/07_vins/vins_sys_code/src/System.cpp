@@ -265,7 +265,7 @@ void System::ProcessBackEnd()
         if (measurements.size() >= 1)
         {
             cout << "1 getMeasurements size: " << measurements.size()
-                 << " imu sizes: " << measurements[0].first.size()//这一帧图像前面有多少imu
+                 << " imu sizes: " << measurements[0].first.size() //这一帧图像前面有多少imu
                  << " feature_buf size: " << feature_buf.size()
                  << " imu_buf size: " << imu_buf.size() << endl;
         }
@@ -273,9 +273,9 @@ void System::ProcessBackEnd()
         m_estimator.lock();
         for (auto &measurement : measurements)
         {
-            auto img_msg = measurement.second;//cam
+            auto img_msg = measurement.second; //cam
             double dx = 0, dy = 0, dz = 0, rx = 0, ry = 0, rz = 0;
-            for (auto &imu_msg : measurement.first)//对每个imu
+            for (auto &imu_msg : measurement.first) //对每个imu
             {
                 double t = imu_msg->header;
                 double img_t = imu_msg->header + estimator.td;
@@ -283,6 +283,7 @@ void System::ProcessBackEnd()
                 {
                     if (current_time < 0)
                         current_time = t;
+                        
                     double dt = t - current_time;
                     assert(dt >= 0);
                     current_time = t;
