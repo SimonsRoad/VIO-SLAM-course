@@ -91,6 +91,7 @@ void Estimator::clearState()
     drift_correct_t = Vector3d::Zero();
 }
 
+//对于一组cam前面的一组imu的每一帧数据的处理
 void Estimator::processIMU(double dt, const Vector3d &linear_acceleration, const Vector3d &angular_velocity)
 {
     if (!first_imu)

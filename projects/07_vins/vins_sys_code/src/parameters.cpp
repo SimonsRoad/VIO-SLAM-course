@@ -40,7 +40,7 @@ vector<string> CAM_NAMES;
 int MAX_CNT;
 int MIN_DIST;
 // int WINDOW_SIZE;
-int FREQ;
+int FREQ;// 图像的频率
 double F_THRESHOLD;
 int SHOW_TRACK;
 bool STEREO_TRACK;

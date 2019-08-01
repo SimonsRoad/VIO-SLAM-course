@@ -11,7 +11,7 @@ int FREQ;
 double F_THRESHOLD;
 int SHOW_TRACK;
 int STEREO_TRACK;
-int EQUALIZE;
+int EQUALIZE;////色彩均衡标志位
 int ROW;
 int COL;
 int FOCAL_LENGTH;

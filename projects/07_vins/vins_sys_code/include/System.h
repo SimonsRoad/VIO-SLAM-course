@@ -16,28 +16,30 @@
 #include "parameters.h"
 #include "feature_tracker.h"
 
+//imu for vio
+struct IMU_MSG
+{
+    double header;                       //时间戳
+    Eigen::Vector3d linear_acceleration; //数据
+    Eigen::Vector3d angular_velocity;
+};
 
-    //imu for vio
-    struct IMU_MSG
-    {
-        double header;
-        Eigen::Vector3d linear_acceleration;
-        Eigen::Vector3d angular_velocity;
-    };
-    typedef std::shared_ptr<IMU_MSG const> ImuConstPtr;
+typedef std::shared_ptr<IMU_MSG const> ImuConstPtr;
 
-    //image for vio    
-    struct IMG_MSG {
-        double header;
-        vector<Vector3d> points;
-        vector<int> id_of_point;
-        vector<float> u_of_point;
-        vector<float> v_of_point;
-        vector<float> velocity_x_of_point;
-        vector<float> velocity_y_of_point;
-    };
-    typedef std::shared_ptr <IMG_MSG const > ImgConstPtr;
-    
+//image for vio
+struct IMG_MSG
+{
+    double header;//时间戳
+    vector<Vector3d> points;//特征点的3D　point
+    vector<int> id_of_point; //point_id
+    vector<float> u_of_point; //point_uv
+    vector<float> v_of_point;
+    vector<float> velocity_x_of_point;//point_vx vy
+    vector<float> velocity_y_of_point;
+};
+
+typedef std::shared_ptr<IMG_MSG const> ImgConstPtr;
+
 class System
 {
 public:
@@ -47,15 +49,14 @@ public:
 
     void PubImageData(double dStampSec, cv::Mat &img);
 
-    void PubImuData(double dStampSec, const Eigen::Vector3d &vGyr, 
-        const Eigen::Vector3d &vAcc);
+    void PubImuData(double dStampSec, const Eigen::Vector3d &vGyr,
+                    const Eigen::Vector3d &vAcc);
 
     // thread: visual-inertial odometry
     void ProcessBackEnd();
     void Draw();
-    
-private:
 
+private:
     //feature tracker
     std::vector<uchar> r_status;
     std::vector<float> r_err;
@@ -76,8 +77,8 @@ private:
 
     std::condition_variable con;
     double current_time = -1;
-    std::queue<ImuConstPtr> imu_buf;
-    std::queue<ImgConstPtr> feature_buf;
+    std::queue<ImuConstPtr> imu_buf;//IMU date buffer
+    std::queue<ImgConstPtr> feature_buf;// image feature data buffer
     // std::queue<PointCloudConstPtr> relo_buf;
     int sum_of_wait = 0;
 
@@ -101,5 +102,4 @@ private:
     std::vector<Eigen::Vector3d> vPath_to_draw;
     bool bStart_backend;
     std::vector<std::pair<std::vector<ImuConstPtr>, ImgConstPtr>> getMeasurements();
-    
 };

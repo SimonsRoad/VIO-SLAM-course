@@ -6,7 +6,7 @@ using namespace std;
 using namespace cv;
 using namespace pangolin;
 System::System(string sConfig_file_)
-    :bStart_backend(true)
+    : bStart_backend(true)
 {
     string sConfig_file = sConfig_file_ + "euroc_config.yaml";
 
@@ -16,8 +16,8 @@ System::System(string sConfig_file_)
     trackerData[0].readIntrinsicParameter(sConfig_file);
 
     estimator.setParameter();
-    ofs_pose.open("./pose_output.txt",fstream::app | fstream::out);
-    if(!ofs_pose.is_open())
+    ofs_pose.open("./pose_output.txt", fstream::app | fstream::out);
+    if (!ofs_pose.is_open())
     {
         cerr << "ofs_pose is not open" << endl;
     }
@@ -29,9 +29,9 @@ System::System(string sConfig_file_)
 System::~System()
 {
     bStart_backend = false;
-    
+
     pangolin::QuitAll();
-    
+
     m_buf.lock();
     while (!feature_buf.empty())
         feature_buf.pop();
@@ -46,6 +46,9 @@ System::~System()
     ofs_pose.close();
 }
 
+/*
+ * 收到一帧image data
+ */
 void System::PubImageData(double dStampSec, Mat &img)
 {
     if (!init_feature)
@@ -91,7 +94,7 @@ void System::PubImageData(double dStampSec, Mat &img)
 
     TicToc t_r;
     // cout << "3 PubImageData t : " << dStampSec << endl;
-    trackerData[0].readImage(img, dStampSec);
+    trackerData[0].readImage(img, dStampSec); //left image tracking
 
     for (unsigned int i = 0;; i++)
     {
@@ -115,7 +118,7 @@ void System::PubImageData(double dStampSec, Mat &img)
             auto &pts_velocity = trackerData[i].pts_velocity;
             for (unsigned int j = 0; j < ids.size(); j++)
             {
-                if (trackerData[i].track_cnt[j] > 1)
+                if (trackerData[i].track_cnt[j] > 1) //光流连续追踪的点
                 {
                     int p_id = ids[j];
                     hash_ids[i].insert(p_id);
@@ -135,7 +138,7 @@ void System::PubImageData(double dStampSec, Mat &img)
             if (!init_pub)
             {
                 cout << "4 PubImage init_pub skip the first image!" << endl;
-                init_pub = 1;
+                init_pub = true;
             }
             else
             {
@@ -144,27 +147,27 @@ void System::PubImageData(double dStampSec, Mat &img)
                 // cout << "5 PubImage t : " << fixed << feature_points->header
                 //     << " feature_buf size: " << feature_buf.size() << endl;
                 m_buf.unlock();
-                con.notify_one();
+                con.notify_one(); //随机唤醒一个等待的线程
             }
         }
-    }
+    } //if PUB_THIS_FRAME end
 
     cv::Mat show_img;
-	cv::cvtColor(img, show_img, CV_GRAY2RGB);
-	if (SHOW_TRACK)
-	{
-		for (unsigned int j = 0; j < trackerData[0].cur_pts.size(); j++)
+    cv::cvtColor(img, show_img, CV_GRAY2RGB);
+    //是否可时候追踪过程
+    if (SHOW_TRACK)
+    {
+        for (unsigned int j = 0; j < trackerData[0].cur_pts.size(); j++)
         {
-			double len = min(1.0, 1.0 * trackerData[0].track_cnt[j] / WINDOW_SIZE);
-			cv::circle(show_img, trackerData[0].cur_pts[j], 2, cv::Scalar(255 * (1 - len), 0, 255 * len), 2);
-		}
+            double len = min(1.0, 1.0 * trackerData[0].track_cnt[j] / WINDOW_SIZE);
+            cv::circle(show_img, trackerData[0].cur_pts[j], 2, cv::Scalar(255 * (1 - len), 0, 255 * len), 2); // BGR  追踪的连续帧如果大于windows size就是red, 新提点是偏蓝
+        }
 
         cv::namedWindow("IMAGE", CV_WINDOW_AUTOSIZE);
-		cv::imshow("IMAGE", show_img);
+        cv::imshow("IMAGE", show_img);
         cv::waitKey(1);
-	}
+    }
     // cout << "5 PubImage" << endl;
-    
 }
 
 vector<pair<vector<ImuConstPtr>, ImgConstPtr>> System::getMeasurements()
@@ -179,15 +182,15 @@ vector<pair<vector<ImuConstPtr>, ImgConstPtr>> System::getMeasurements()
             return measurements;
         }
 
-        if (!(imu_buf.back()->header > feature_buf.front()->header + estimator.td))
+        if (!(imu_buf.back()->header > feature_buf.front()->header + estimator.td)) //imu_back < feature_front　所有的imu都在cam前面
         {
-            cerr << "wait for imu, only should happen at the beginning sum_of_wait: " 
-                << sum_of_wait << endl;
+            cerr << "wait for imu, only should happen at the beginning sum_of_wait: "
+                 << sum_of_wait << endl;
             sum_of_wait++;
             return measurements;
         }
 
-        if (!(imu_buf.front()->header < feature_buf.front()->header + estimator.td))
+        if (!(imu_buf.front()->header < feature_buf.front()->header + estimator.td)) //imu_front > feature_front
         {
             cerr << "throw img, only should happen at the beginning" << endl;
             feature_buf.pop();
@@ -204,25 +207,30 @@ vector<pair<vector<ImuConstPtr>, ImgConstPtr>> System::getMeasurements()
         }
         // cout << "1 getMeasurements IMUs size: " << IMUs.size() << endl;
         IMUs.emplace_back(imu_buf.front());
-        if (IMUs.empty()){
+        if (IMUs.empty())
+        {
             cerr << "no imu between two image" << endl;
         }
         // cout << "1 getMeasurements img t: " << fixed << img_msg->header
-        //     << " imu begin: "<< IMUs.front()->header 
+        //     << " imu begin: "<< IMUs.front()->header
         //     << " end: " << IMUs.back()->header
         //     << endl;
-        measurements.emplace_back(IMUs, img_msg);
+        measurements.emplace_back(IMUs, img_msg); //一帧cam和它前面的一组imu
     }
     return measurements;
 }
 
-void System::PubImuData(double dStampSec, const Eigen::Vector3d &vGyr, 
-    const Eigen::Vector3d &vAcc)
+/*
+ * -接收一帧imu数据
+ *
+ */
+void System::PubImuData(double dStampSec, const Eigen::Vector3d &vGyr,
+                        const Eigen::Vector3d &vAcc)
 {
     shared_ptr<IMU_MSG> imu_msg(new IMU_MSG());
-	imu_msg->header = dStampSec;
-	imu_msg->linear_acceleration = vAcc;
-	imu_msg->angular_velocity = vGyr;
+    imu_msg->header = dStampSec;
+    imu_msg->linear_acceleration = vAcc;
+    imu_msg->angular_velocity = vGyr;
 
     if (dStampSec <= last_imu_t)
     {
@@ -235,7 +243,7 @@ void System::PubImuData(double dStampSec, const Eigen::Vector3d &vGyr,
     //     << " gyr: " << imu_msg->angular_velocity.transpose() << endl;
     m_buf.lock();
     imu_buf.push(imu_msg);
-    // cout << "1 PubImuData t: " << fixed << imu_msg->header 
+    // cout << "1 PubImuData t: " << fixed << imu_msg->header
     //     << " imu_buf size:" << imu_buf.size() << endl;
     m_buf.unlock();
     con.notify_one();
@@ -248,25 +256,26 @@ void System::ProcessBackEnd()
     while (bStart_backend)
     {
         // cout << "1 process()" << endl;
-        vector<pair<vector<ImuConstPtr>, ImgConstPtr>> measurements;
-        
+        vector<pair<vector<ImuConstPtr>, ImgConstPtr>> measurements; //一组imu和一帧图像对应的数据
+
         unique_lock<mutex> lk(m_buf);
         con.wait(lk, [&] {
             return (measurements = getMeasurements()).size() != 0;
         });
-        if( measurements.size() > 1){
-        cout << "1 getMeasurements size: " << measurements.size() 
-            << " imu sizes: " << measurements[0].first.size()
-            << " feature_buf size: " <<  feature_buf.size()
-            << " imu_buf size: " << imu_buf.size() << endl;
+        if (measurements.size() >= 1)
+        {
+            cout << "1 getMeasurements size: " << measurements.size()
+                 << " imu sizes: " << measurements[0].first.size()//这一帧图像前面有多少imu
+                 << " feature_buf size: " << feature_buf.size()
+                 << " imu_buf size: " << imu_buf.size() << endl;
         }
         lk.unlock();
         m_estimator.lock();
         for (auto &measurement : measurements)
         {
-            auto img_msg = measurement.second;
+            auto img_msg = measurement.second;//cam
             double dx = 0, dy = 0, dz = 0, rx = 0, ry = 0, rz = 0;
-            for (auto &imu_msg : measurement.first)
+            for (auto &imu_msg : measurement.first)//对每个imu
             {
                 double t = imu_msg->header;
                 double img_t = imu_msg->header + estimator.td;
@@ -307,12 +316,12 @@ void System::ProcessBackEnd()
                 }
             }
 
-            // cout << "processing vision data with stamp:" << img_msg->header 
+            // cout << "processing vision data with stamp:" << img_msg->header
             //     << " img_msg->points.size: "<< img_msg->points.size() << endl;
 
             // TicToc t_s;
             map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> image;
-            for (unsigned int i = 0; i < img_msg->points.size(); i++) 
+            for (unsigned int i = 0; i < img_msg->points.size(); i++)
             {
                 int v = img_msg->id_of_point[i] + 0.5;
                 int feature_id = v / NUM_OF_CAM;
@@ -331,7 +340,7 @@ void System::ProcessBackEnd()
             }
             TicToc t_processImage;
             estimator.processImage(image, img_msg->header);
-            
+
             if (estimator.solver_flag == Estimator::SolverFlag::NON_LINEAR)
             {
                 Vector3d p_wi;
@@ -340,7 +349,7 @@ void System::ProcessBackEnd()
                 p_wi = estimator.Ps[WINDOW_SIZE];
                 vPath_to_draw.push_back(p_wi);
                 double dStamp = estimator.Headers[WINDOW_SIZE];
-                cout << "1 BackEnd processImage dt: " << fixed << t_processImage.toc() << " stamp: " <<  dStamp << " p_wi: " << p_wi.transpose() << endl;
+                cout << "1 BackEnd processImage dt: " << fixed << t_processImage.toc() << " stamp: " << dStamp << " p_wi: " << p_wi.transpose() << endl;
                 ofs_pose << fixed << dStamp << " " << p_wi.transpose() << " " << q_wi.coeffs().transpose() << endl;
             }
         }
@@ -348,8 +357,8 @@ void System::ProcessBackEnd()
     }
 }
 
-void System::Draw() 
-{   
+void System::Draw()
+{
     // create pangolin window and plot the trajectory
     pangolin::CreateWindowAndBind("Trajectory Viewer", 1024, 768);
     glEnable(GL_DEPTH_TEST);
@@ -357,48 +366,48 @@ void System::Draw()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     pangolin::OpenGlRenderState s_cam(
-            pangolin::ProjectionMatrix(1024, 768, 500, 500, 512, 384, 0.1, 1000),
-            pangolin::ModelViewLookAt(-5, 0, 15, 7, 0, 0, 1.0, 0.0, 0.0)
-    );
+        pangolin::ProjectionMatrix(1024, 768, 500, 500, 512, 384, 0.1, 1000),
+        pangolin::ModelViewLookAt(-5, 0, 15, 7, 0, 0, 1.0, 0.0, 0.0));
 
     pangolin::View &d_cam = pangolin::CreateDisplay()
-            .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0, -1024.0f / 768.0f)
-            .SetHandler(new pangolin::Handler3D(s_cam));
+                                .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0, -1024.0f / 768.0f)
+                                .SetHandler(new pangolin::Handler3D(s_cam));
 
-    while (pangolin::ShouldQuit() == false) {
+    while (pangolin::ShouldQuit() == false)
+    {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         d_cam.Activate(s_cam);
         glClearColor(0.75f, 0.75f, 0.75f, 0.75f);
         glColor3f(0, 0, 1);
         pangolin::glDrawAxis(3);
-         
+
         // draw poses
         glColor3f(0, 0, 0);
         glLineWidth(2);
         glBegin(GL_LINES);
         int nPath_size = vPath_to_draw.size();
-        for(int i = 0; i < nPath_size-1; ++i)
-        {        
+        for (int i = 0; i < nPath_size - 1; ++i)
+        {
             glVertex3f(vPath_to_draw[i].x(), vPath_to_draw[i].y(), vPath_to_draw[i].z());
-            glVertex3f(vPath_to_draw[i+1].x(), vPath_to_draw[i+1].y(), vPath_to_draw[i+1].z());
+            glVertex3f(vPath_to_draw[i + 1].x(), vPath_to_draw[i + 1].y(), vPath_to_draw[i + 1].z());
         }
         glEnd();
-        
+
         // points
         if (estimator.solver_flag == Estimator::SolverFlag::NON_LINEAR)
         {
             glPointSize(5);
             glBegin(GL_POINTS);
-            for(int i = 0; i < WINDOW_SIZE+1;++i)
+            for (int i = 0; i < WINDOW_SIZE + 1; ++i)
             {
                 Vector3d p_wi = estimator.Ps[i];
                 glColor3f(1, 0, 0);
-                glVertex3d(p_wi[0],p_wi[1],p_wi[2]);
+                glVertex3d(p_wi[0], p_wi[1], p_wi[2]);
             }
             glEnd();
         }
         pangolin::FinishFrame();
-        usleep(5000);   // sleep 5 ms
+        usleep(5000); // sleep 5 ms
     }
 }
