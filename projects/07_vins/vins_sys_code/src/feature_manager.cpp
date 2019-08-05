@@ -80,7 +80,7 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
         }
     }
 
-    //如果连续追踪的特征点太少了，要赶紧把当前帧补为关键帧
+    //如果连续追踪的特征点太少了，要赶紧把当前帧补为关键帧，小于２也无法算last_second last_third的视差
     if (frame_count < 2 || last_track_num < 20)
         return true;
 
