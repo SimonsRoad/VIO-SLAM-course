@@ -137,6 +137,19 @@ run_euroc/fast:
 .PHONY : run_euroc/fast
 
 #=============================================================================
+# Target rules for targets named run_simulation
+
+# Build rule for target.
+run_simulation: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 run_simulation
+.PHONY : run_simulation
+
+# fast build rule for target.
+run_simulation/fast:
+	$(MAKE) -f CMakeFiles/run_simulation.dir/build.make CMakeFiles/run_simulation.dir/build
+.PHONY : run_simulation/fast
+
+#=============================================================================
 # Target rules for targets named testCurveFitting
 
 # Build rule for target.
@@ -1053,6 +1066,33 @@ test/run_euroc.cpp.s:
 	$(MAKE) -f CMakeFiles/run_euroc.dir/build.make CMakeFiles/run_euroc.dir/test/run_euroc.cpp.s
 .PHONY : test/run_euroc.cpp.s
 
+test/run_simulation.o: test/run_simulation.cpp.o
+
+.PHONY : test/run_simulation.o
+
+# target to build an object file
+test/run_simulation.cpp.o:
+	$(MAKE) -f CMakeFiles/run_simulation.dir/build.make CMakeFiles/run_simulation.dir/test/run_simulation.cpp.o
+.PHONY : test/run_simulation.cpp.o
+
+test/run_simulation.i: test/run_simulation.cpp.i
+
+.PHONY : test/run_simulation.i
+
+# target to preprocess a source file
+test/run_simulation.cpp.i:
+	$(MAKE) -f CMakeFiles/run_simulation.dir/build.make CMakeFiles/run_simulation.dir/test/run_simulation.cpp.i
+.PHONY : test/run_simulation.cpp.i
+
+test/run_simulation.s: test/run_simulation.cpp.s
+
+.PHONY : test/run_simulation.s
+
+# target to generate assembly for a file
+test/run_simulation.cpp.s:
+	$(MAKE) -f CMakeFiles/run_simulation.dir/build.make CMakeFiles/run_simulation.dir/test/run_simulation.cpp.s
+.PHONY : test/run_simulation.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -1063,6 +1103,7 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... camera_model"
 	@echo "... run_euroc"
+	@echo "... run_simulation"
 	@echo "... testCurveFitting"
 	@echo "... MyVio"
 	@echo "... src/System.o"
@@ -1164,6 +1205,9 @@ help:
 	@echo "... test/run_euroc.o"
 	@echo "... test/run_euroc.i"
 	@echo "... test/run_euroc.s"
+	@echo "... test/run_simulation.o"
+	@echo "... test/run_simulation.i"
+	@echo "... test/run_simulation.s"
 .PHONY : help
 
 

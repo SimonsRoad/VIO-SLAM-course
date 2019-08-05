@@ -18,12 +18,13 @@ public:
     {
         points = _points;
     };
-    map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> points;
+    map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> points;//当前帧的观测　map中　feature_id xyz_uv_velocity
     double t;
-    Matrix3d R;
+    Matrix3d R;//cam pose
     Vector3d T;
-    IntegrationBase *pre_integration;
+    IntegrationBase *pre_integration; //相机pose相对应的一个IMU增量
     bool is_key_frame;
 };
 
+//视觉与ＩＭＵ对齐
 bool VisualIMUAlignment(map<double, ImageFrame> &all_image_frame, Vector3d *Bgs, Vector3d &g, VectorXd &x);

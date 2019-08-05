@@ -48,6 +48,10 @@ System::~System()
 
 /*
  * 收到一帧image data
+ * - trackerData[0].readImage(img, dStampSec); //left image tracking　读入一副图片进行特征提取与追踪
+ * - updateID(i);//对于新提取的特征点，id往后顺延
+ * - feature_buf.push(feature_points); //对于连续追踪到的特征点，放入ｆeature buf待处理
+ * 
  */
 void System::PubImageData(double dStampSec, Mat &img)
 {
@@ -92,18 +96,19 @@ void System::PubImageData(double dStampSec, Mat &img)
         PUB_THIS_FRAME = false;
     }
 
-    TicToc t_r;
+    TicToc t_r; //记录处理一帧图片的时间
     // cout << "3 PubImageData t : " << dStampSec << endl;
-    trackerData[0].readImage(img, dStampSec); //left image tracking
+    trackerData[0].readImage(img, dStampSec); //left image tracking　读入一副图片进行特征提取与追踪
 
     for (unsigned int i = 0;; i++)
     {
         bool completed = false;
-        completed |= trackerData[0].updateID(i);
+        completed |= trackerData[0].updateID(i); //对于新提取的特征点，id往后顺延
 
         if (!completed)
             break;
     }
+    cout << "current frame feature tracking time: " << t_r.toc() << endl;
     if (PUB_THIS_FRAME)
     {
         pub_count++;
@@ -122,18 +127,19 @@ void System::PubImageData(double dStampSec, Mat &img)
                 {
                     int p_id = ids[j];
                     hash_ids[i].insert(p_id);
-                    double x = un_pts[j].x;
+                    double x = un_pts[j].x; //归一化相机坐标
                     double y = un_pts[j].y;
                     double z = 1;
                     feature_points->points.push_back(Vector3d(x, y, z));
                     feature_points->id_of_point.push_back(p_id * NUM_OF_CAM + i);
                     feature_points->u_of_point.push_back(cur_pts[j].x);
                     feature_points->v_of_point.push_back(cur_pts[j].y);
+                    // cout << " current pts: " << cur_pts[j].x << " , " << cur_pts[j].y << endl;
+                    // cout << " current_un pts: " << un_pts[j].x << " , " << un_pts[j].y << endl;
                     feature_points->velocity_x_of_point.push_back(pts_velocity[j].x);
                     feature_points->velocity_y_of_point.push_back(pts_velocity[j].y);
                 }
             }
-            //}
             // skip the first image; since no optical speed on frist image
             if (!init_pub)
             {
@@ -143,18 +149,17 @@ void System::PubImageData(double dStampSec, Mat &img)
             else
             {
                 m_buf.lock();
-                feature_buf.push(feature_points);
-                // cout << "5 PubImage t : " << fixed << feature_points->header
-                //     << " feature_buf size: " << feature_buf.size() << endl;
+                feature_buf.push(feature_points); //将当前帧tracking feature 放入　feature buf
+                cout << "5 PubImage t : " << fixed << feature_points->header
+                     << " feature_buf size: " << feature_buf.size() << endl;
                 m_buf.unlock();
                 con.notify_one(); //随机唤醒一个等待的线程
             }
         }
     } //if PUB_THIS_FRAME end
-
     cv::Mat show_img;
     cv::cvtColor(img, show_img, CV_GRAY2RGB);
-    //是否可时候追踪过程
+    //是否可视化追踪过程
     if (SHOW_TRACK)
     {
         for (unsigned int j = 0; j < trackerData[0].cur_pts.size(); j++)
@@ -170,6 +175,58 @@ void System::PubImageData(double dStampSec, Mat &img)
     // cout << "5 PubImage" << endl;
 }
 
+//如果其他的module已经提取出来图像的特征，并对特征进行了匹配，我们只需要将这些点放入feature buffer
+void System::PubFeatureData(double dStampSec, const vector<int> &feature_id, const vector<Vector2d> &feature, const vector<Vector3d> &landmak, std::vector<Vector2d> &featureVelocity)
+{
+
+    shared_ptr<IMG_MSG> feature_points(new IMG_MSG());
+    feature_points->header = dStampSec;
+    vector<set<int>> hash_ids(NUM_OF_CAM);
+    for (int i = 0; i < NUM_OF_CAM; i++)
+    {
+
+        for (unsigned int j = 0; j < feature_id.size(); j++)
+        {
+
+            int p_id = feature_id[j];
+            hash_ids[i].insert(p_id);
+            double x_value = feature[j].x();
+            double y_value = feature[j].y();
+            double z = 1;
+            feature_points->points.push_back(Vector3d(x_value, y_value, z));
+            //feature_points->points.push_back(landmak[j]);
+            feature_points->id_of_point.push_back(p_id * NUM_OF_CAM + i);
+            feature_points->u_of_point.push_back(feature[j].x());
+            feature_points->v_of_point.push_back(feature[j].y());
+            feature_points->velocity_x_of_point.push_back(featureVelocity[j].x());
+            feature_points->velocity_y_of_point.push_back(featureVelocity[j].y());
+        }
+        // skip the first image; since no optical speed on frist image
+        if (!init_pub)
+        {
+            cout << "4 PubImage init_pub skip the first image!" << endl;
+            init_pub = true;
+        }
+        else
+        {
+            m_buf.lock();
+            feature_buf.push(feature_points);
+            // cout << "5 PubImage t : " << fixed << feature_points->header
+            //     << " feature_buf size: " << feature_buf.size() << endl;
+            m_buf.unlock();
+            con.notify_one(); //随机唤醒一个等待的线程
+        }
+    }
+}
+
+/*
+ * getMeasurments　利用时间戳简单把imu 与 cam数据对齐　[--------O--------O--------O--------O--------]，保证每个视觉帧前面、后面都有若干imu数据
+ * 如果数据没有对齐进行相应的等待和丢弃
+ * ImgConstPtr img_msg = feature_buf.front();　一个视觉帧
+ * vector<ImuConstPtr> IMUs;　视觉帧之前的若干imu帧
+ * 　
+ * measurements.emplace_back(IMUs, img_msg); //最后将一帧cam和它前面的一组imu打包放入measurements　vector中给下一级
+ */
 vector<pair<vector<ImuConstPtr>, ImgConstPtr>> System::getMeasurements()
 {
     vector<pair<vector<ImuConstPtr>, ImgConstPtr>> measurements;
@@ -182,23 +239,29 @@ vector<pair<vector<ImuConstPtr>, ImgConstPtr>> System::getMeasurements()
             return measurements;
         }
 
+        // cout << "imu_buf.back() time: " <<imu_buf.back()->header << "feature_buf.front() time: "<<feature_buf.front()->header << endl;
+        cout << "imu_buf size: " << imu_buf.size() << "  feature_buf size: " << feature_buf.size() << endl;
+        //正常情况　[--------O---] 如果imu back小于　feature_front,[[----------- O]]说明imu都在cam前面,需要等imu一会儿，imu频率很高的，要是系统跑起来，imubuffer可定会超过 feature buffer,所以只能发生在beginning
         if (!(imu_buf.back()->header > feature_buf.front()->header + estimator.td)) //imu_back < feature_front　所有的imu都在cam前面
         {
-            cerr << "wait for imu, only should happen at the beginning sum_of_wait: "
+            cerr << "wait for imu, only should happen at the beginning, sum_of_wait: "
                  << sum_of_wait << endl;
             sum_of_wait++;
             return measurements;
         }
-
+        //正常情况　[--------O---] 如果imu front 大于　feature_front,[ O ----------- ],这种情况current frame没有对应的imu数据，也是因为系统启动时，所以要把这帧图像丢到
         if (!(imu_buf.front()->header < feature_buf.front()->header + estimator.td)) //imu_front > feature_front
         {
             cerr << "throw img, only should happen at the beginning" << endl;
             feature_buf.pop();
             continue;
         }
+        //排除上面的异常情况后，正常情况　[--------O---]
+        //取出这一帧cam feature 和前面的IMU数据进行处理
         ImgConstPtr img_msg = feature_buf.front();
         feature_buf.pop();
 
+        // [--------O---] ==> [O-------------]
         vector<ImuConstPtr> IMUs;
         while (imu_buf.front()->header < img_msg->header + estimator.td)
         {
@@ -232,7 +295,7 @@ void System::PubImuData(double dStampSec, const Eigen::Vector3d &vGyr,
     imu_msg->linear_acceleration = vAcc;
     imu_msg->angular_velocity = vGyr;
 
-    if (dStampSec <= last_imu_t)
+    if (dStampSec < last_imu_t)
     {
         cerr << "imu message in disorder!" << endl;
         return;
@@ -250,6 +313,12 @@ void System::PubImuData(double dStampSec, const Eigen::Vector3d &vGyr,
 }
 
 // thread: visual-inertial odometry
+/*
+ *　- getMeasurements  得到一组或者多组对齐的　若干imu和一帧图像对应的数据
+ * - estimator.processIMU(dt, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz)); 对于每一帧imu
+ * 
+ * -
+ */
 void System::ProcessBackEnd()
 {
     cout << "1 ProcessBackEnd start" << endl;
@@ -259,22 +328,28 @@ void System::ProcessBackEnd()
         vector<pair<vector<ImuConstPtr>, ImgConstPtr>> measurements; //一组imu和一帧图像对应的数据
 
         unique_lock<mutex> lk(m_buf);
+        //wait有两个参数，
+        //前一个参数等待其他线程触发con.notify_one()　来解锁 unique_lock<mutex> lk(m_buf)
+        //后一个参数lamda函数，如果返回false 就让出互斥量给其他线程，继续休眠，如果返回true，则可以独占这个互斥量，往下执行
         con.wait(lk, [&] {
-            return (measurements = getMeasurements()).size() != 0;
+            return (measurements = getMeasurements()).size() != 0;//因为操作　getMeasurements也会读写imu_buf和feature buf,所以还是需要m_buf的互斥锁的
         });
         if (measurements.size() >= 1)
         {
             cout << "1 getMeasurements size: " << measurements.size()
-                 << " imu sizes: " << measurements[0].first.size() //这一帧图像前面有多少imu
+                 << " imu size: " << measurements[0].first.size() //这一帧图像前面有多少imu
+                 << " cam size: " << measurements.size()
                  << " feature_buf size: " << feature_buf.size()
                  << " imu_buf size: " << imu_buf.size() << endl;
         }
-        lk.unlock();
+        lk.unlock();//当getMeasurements　参数传递给measurements后，赶紧让出互斥量，重新获取m_estimator互斥量控制权
         m_estimator.lock();
         for (auto &measurement : measurements)
         {
-            auto img_msg = measurement.second; //cam
+            auto img_msg = measurement.second; //image feature　后面用
             double dx = 0, dy = 0, dz = 0, rx = 0, ry = 0, rz = 0;
+
+            //先处理imu
             for (auto &imu_msg : measurement.first) //对每个imu
             {
                 double t = imu_msg->header;
@@ -283,7 +358,7 @@ void System::ProcessBackEnd()
                 {
                     if (current_time < 0)
                         current_time = t;
-                        
+
                     double dt = t - current_time;
                     assert(dt >= 0);
                     current_time = t;
@@ -294,7 +369,7 @@ void System::ProcessBackEnd()
                     ry = imu_msg->angular_velocity.y();
                     rz = imu_msg->angular_velocity.z();
                     estimator.processIMU(dt, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz));
-                    // printf("1 BackEnd imu: dt:%f a: %f %f %f w: %f %f %f\n",dt, dx, dy, dz, rx, ry, rz);
+                    //printf("1 BackEnd imu: dt:%f a: %f %f %f w: %f %f %f\n",dt, dx, dy, dz, rx, ry, rz);
                 }
                 else
                 {
@@ -317,19 +392,23 @@ void System::ProcessBackEnd()
                 }
             }
 
-            // cout << "processing vision data with stamp:" << img_msg->header
-            //     << " img_msg->points.size: "<< img_msg->points.size() << endl;
+            cout << "processing vision data with stamp:" << img_msg->header
+                 << " img_msg->points.size: " << img_msg->points.size() << endl;
 
             // TicToc t_s;
+            // img_msg是一帧cam对应的数据
             map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> image;
+            //<key-feature_id  value:camera_id(0/1) xyz_uv_velocity>
+            //归一化相机坐标 x/z y/z 1  像素坐标，以及x/z y/z 的运动速度
             for (unsigned int i = 0; i < img_msg->points.size(); i++)
             {
                 int v = img_msg->id_of_point[i] + 0.5;
-                int feature_id = v / NUM_OF_CAM;
-                int camera_id = v % NUM_OF_CAM;
+                int feature_id = v / NUM_OF_CAM; //当时编码id的时候　p_id * NUM_OF_CAM + i　feature_id*cam数目＋cam0/cam1
+                int camera_id = v % NUM_OF_CAM;  // 0/1
                 double x = img_msg->points[i].x();
                 double y = img_msg->points[i].y();
                 double z = img_msg->points[i].z();
+
                 double p_u = img_msg->u_of_point[i];
                 double p_v = img_msg->v_of_point[i];
                 double velocity_x = img_msg->velocity_x_of_point[i];
@@ -337,10 +416,11 @@ void System::ProcessBackEnd()
                 assert(z == 1);
                 Eigen::Matrix<double, 7, 1> xyz_uv_velocity;
                 xyz_uv_velocity << x, y, z, p_u, p_v, velocity_x, velocity_y;
-                image[feature_id].emplace_back(camera_id, xyz_uv_velocity);
+                image[feature_id].emplace_back(camera_id, xyz_uv_velocity); //image是一帧图像的一组特征点
             }
             TicToc t_processImage;
-            estimator.processImage(image, img_msg->header);
+            estimator.processImage(image, img_msg->header); // 转换成vins的　cam数据的组织结构
+
 
             if (estimator.solver_flag == Estimator::SolverFlag::NON_LINEAR)
             {

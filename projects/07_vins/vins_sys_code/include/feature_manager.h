@@ -19,7 +19,7 @@ using namespace Eigen;
 class FeaturePerFrame
 {
 public:
-  FeaturePerFrame(const Eigen::Matrix<double, 7, 1> &_point, double td)
+  FeaturePerFrame(const Eigen::Matrix<double, 7, 1> &_point, double td) //描述一帧图像的一个特征点
   {
     point.x() = _point(0);
     point.y() = _point(1);
@@ -42,12 +42,12 @@ public:
   double dep_gradient;
 };
 
-class FeaturePerId
+class FeaturePerId //描述一个特征点在多帧的表示
 {
 public:
   const int feature_id;
   int start_frame;
-  vector<FeaturePerFrame> feature_per_frame;
+  vector<FeaturePerFrame> feature_per_frame; //每一帧中的归一化相机坐标、像素坐标、像素运动速度
 
   int used_num;
   bool is_outlier;
@@ -91,8 +91,8 @@ public:
   void removeBack();
   void removeFront(int frame_count);
   void removeOutlier();
-  list<FeaturePerId> feature;
-  int last_track_num;
+  list<FeaturePerId> feature;//所有特征点，每一个元素表示这个特征点在哪些图像上出现过
+  int last_track_num;//记录连续两帧都追踪到的特征点
 
 private:
   double compensatedParallax2(const FeaturePerId &it_per_id, int frame_count);

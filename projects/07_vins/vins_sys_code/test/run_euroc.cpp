@@ -59,10 +59,10 @@ void PubImageData()
 	cout << "1 PubImageData start sImage_file: " << sImage_file << endl;
 
 	ifstream fsImage;
-	fsImage.open(sImage_file.c_str());
+	fsImage.open(sImage_file.c_str());//图片文件名list
 	if (!fsImage.is_open())
 	{
-		cerr << "Failed to open image file! " << sImage_file << endl;
+		cerr << "Failed to open image file list file! " << sImage_file << endl;
 		return;
 	}
 
@@ -71,10 +71,10 @@ void PubImageData()
 	string sImgFileName;
 	
 	// cv::namedWindow("SOURCE IMAGE", CV_WINDOW_AUTOSIZE);
-	while (std::getline(fsImage, sImage_line) && !sImage_line.empty())
+	while (std::getline(fsImage, sImage_line) && !sImage_line.empty())//对于每一副图像
 	{
-		std::istringstream ssImuData(sImage_line);
-		ssImuData >> dStampNSec >> sImgFileName;
+		std::istringstream ssImageData(sImage_line);
+		ssImageData >> dStampNSec >> sImgFileName;
 		// cout << "Image t : " << fixed << dStampNSec << " Name: " << sImgFileName << endl;
 		string imagePath = sData_path + "cam0/data/" + sImgFileName;
 
@@ -95,14 +95,14 @@ void PubImageData()
 
 int main(int argc, char **argv)
 {
-	if(argc != 3)
-	{
-		cerr << "./run_euroc PATH_TO_FOLDER/MH-05/mav0 PATH_TO_CONFIG/config \n" 
-			<< "For example: ./run_euroc /home/ubuntu/dataset/EuRoc/MH-05/ ../config/"<< endl;
-		return -1;
-	}
-	sData_path = argv[1];
-	sConfig_path = argv[2];
+	// if(argc != 3)
+	// {
+	// 	cerr << "./run_euroc PATH_TO_FOLDER/MH-05/mav0 PATH_TO_CONFIG/config \n" 
+	// 		<< "For example: ./run_euroc /home/ubuntu/dataset/EuRoc/MH-05/ ../config/"<< endl;
+	// 	return -1;
+	// }
+	// sData_path = argv[1];
+	// sConfig_path = argv[2];
 
 	pSystem.reset(new System(sConfig_path));
 	
@@ -114,7 +114,7 @@ int main(int argc, char **argv)
 
 	std::thread thd_PubImageData(PubImageData);//image数据预处理-> image buf
 	
-	std::thread thd_Draw(&System::Draw, pSystem);//轨迹实时可视化的线程
+	//std::thread thd_Draw(&System::Draw, pSystem);//轨迹实时可视化的线程
 	
 	thd_PubImuData.join();
 	thd_PubImageData.join();

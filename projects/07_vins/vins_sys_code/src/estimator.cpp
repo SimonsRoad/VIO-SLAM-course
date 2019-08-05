@@ -77,9 +77,9 @@ void Estimator::clearState()
 
     if (tmp_pre_integration != nullptr)
         delete tmp_pre_integration;
-    
+
     tmp_pre_integration = nullptr;
-    
+
     last_marginalization_parameter_blocks.clear();
 
     f_manager.clearState();
@@ -103,11 +103,12 @@ void Estimator::processIMU(double dt, const Vector3d &linear_acceleration, const
 
     if (!pre_integrations[frame_count])
     {
+        //指向一个预积分模型的类的实例化对象
         pre_integrations[frame_count] = new IntegrationBase{acc_0, gyr_0, Bas[frame_count], Bgs[frame_count]};
     }
     if (frame_count != 0)
     {
-        pre_integrations[frame_count]->push_back(dt, linear_acceleration, angular_velocity);
+        pre_integrations[frame_count]->push_back(dt, linear_acceleration, angular_velocity);//根据当前帧进行中值积分，并更新jacobian和协方差
         //if(solver_flag != NON_LINEAR)
         tmp_pre_integration->push_back(dt, linear_acceleration, angular_velocity);
 
@@ -116,26 +117,32 @@ void Estimator::processIMU(double dt, const Vector3d &linear_acceleration, const
         angular_velocity_buf[frame_count].push_back(angular_velocity);
 
         int j = frame_count;
+        // std::cout << "current frame_count: "<< j << std::endl;
         Vector3d un_acc_0 = Rs[j] * (acc_0 - Bas[j]) - g;
         Vector3d un_gyr = 0.5 * (gyr_0 + angular_velocity) - Bgs[j];
         Rs[j] *= Utility::deltaQ(un_gyr * dt).toRotationMatrix();
         Vector3d un_acc_1 = Rs[j] * (linear_acceleration - Bas[j]) - g;
         Vector3d un_acc = 0.5 * (un_acc_0 + un_acc_1);
-        Ps[j] += dt * Vs[j] + 0.5 * dt * dt * un_acc;
+        Ps[j] += dt * Vs[j] + 0.5 * dt * dt * un_acc;//预积分计算的 对应每一个frameconut的pvq
         Vs[j] += dt * un_acc;
     }
     acc_0 = linear_acceleration;
     gyr_0 = angular_velocity;
 }
 
+/*
+ * processImage 输入一帧图像的若干特征点
+ * addFeatureCheckParallax:两个功能，把当前帧的特征点更新到feature list中，根据特征点的新旧比以及视差，设定关键帧和边缘化策略
+ * ImageFrame imageframe(image, header);　all_image_frame.insert(make_pair(header, imageframe));把当前帧更新到all_image_frame中
+ */
 void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double header)
 {
     //ROS_DEBUG("new image coming ------------------------------------------");
-    // cout << "Adding feature points: " << image.size()<<endl;
+     cout << "Adding feature points: " << image.size()<<endl;
     if (f_manager.addFeatureCheckParallax(frame_count, image, td))
-        marginalization_flag = MARGIN_OLD;
+        marginalization_flag = MARGIN_OLD;//当前追踪的特征点太少，或者last second last third 视差较大
     else
-        marginalization_flag = MARGIN_SECOND_NEW;
+        marginalization_flag = MARGIN_SECOND_NEW;//如果视差太小就把　last second 抹掉
 
     //ROS_DEBUG("this frame is--------------------%s", marginalization_flag ? "reject" : "accept");
     //ROS_DEBUG("%s", marginalization_flag ? "Non-keyframe" : "Keyframe");
@@ -146,8 +153,9 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     ImageFrame imageframe(image, header);
     imageframe.pre_integration = tmp_pre_integration;
     all_image_frame.insert(make_pair(header, imageframe));
-    tmp_pre_integration = new IntegrationBase{acc_0, gyr_0, Bas[frame_count], Bgs[frame_count]};
+    tmp_pre_integration = new IntegrationBase{acc_0, gyr_0, Bas[frame_count], Bgs[frame_count]};//更新下一个预积分增量
 
+    //在线校准cam与imu外参，只在系统运行之初
     if (ESTIMATE_EXTRINSIC == 2)
     {
         cout << "calibrating extrinsic param, rotation movement is needed" << endl;
@@ -159,14 +167,16 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
             {
                 // ROS_WARN("initial extrinsic rotation calib success");
                 // ROS_WARN_STREAM("initial extrinsic rotation: " << endl
-                                                            //    << calib_ric);
+                //    << calib_ric);
                 ric[0] = calib_ric;
                 RIC[0] = calib_ric;
                 ESTIMATE_EXTRINSIC = 1;
+                cout << "initial extrinsic rotation calib success!" << endl;
             }
         }
     }
 
+    //系统初始化过程
     if (solver_flag == INITIAL)
     {
         if (frame_count == WINDOW_SIZE)
@@ -196,6 +206,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
         else
             frame_count++;
     }
+    //系统初始化只有　优化求解过程
     else
     {
         TicToc t_solve;
@@ -227,6 +238,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
         last_P0 = Ps[0];
     }
 }
+
 bool Estimator::initialStructure()
 {
     TicToc t_sfm;
@@ -487,7 +499,7 @@ void Estimator::solveOdometry()
     {
         TicToc t_tri;
         f_manager.triangulate(Ps, tic, ric);
-        //cout << "triangulation costs : " << t_tri.toc() << endl;        
+        //cout << "triangulation costs : " << t_tri.toc() << endl;
         backendOptimization();
     }
 }
@@ -914,7 +926,8 @@ void Estimator::problemSolve()
             // TODO:: set Hessian prior to zero
             vertexExt->SetFixed();
         }
-        else{
+        else
+        {
             //ROS_DEBUG("estimate extinsic param");
         }
         problem.AddVertex(vertexExt);
@@ -1127,9 +1140,7 @@ void Estimator::backendOptimization()
             }
         }
     }
-    
 }
-
 
 void Estimator::slideWindow()
 {

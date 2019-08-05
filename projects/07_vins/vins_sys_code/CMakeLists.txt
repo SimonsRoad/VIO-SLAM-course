@@ -82,3 +82,5 @@ target_link_libraries(run_euroc
 add_executable(testCurveFitting test/CurveFitting.cpp)
 target_link_libraries(testCurveFitting MyVio)
 
+add_executable(run_simulation  test/run_simulation.cpp)
+target_link_libraries(run_simulation MyVio)

@@ -51,12 +51,12 @@ public:
   cv::Mat prev_img, cur_img, forw_img;
   vector<cv::Point2f> n_pts;
   vector<cv::Point2f> prev_pts, cur_pts, forw_pts; // 维护的特征点　前一帧，当前帧，以及新来的帧
-  vector<cv::Point2f> prev_un_pts, cur_un_pts;
-  vector<cv::Point2f> pts_velocity;
-  vector<int> ids;       //每一个特征点的id
-  vector<int> track_cnt; //每个特征点被连续追踪的次数
-  map<int, cv::Point2f> cur_un_pts_map;
-  map<int, cv::Point2f> prev_un_pts_map;
+  vector<cv::Point2f> prev_un_pts, cur_un_pts;     //通过相机模型投影在归一化相机平面的坐标　x/z y/z
+  vector<cv::Point2f> pts_velocity;//根据连续两帧cam frame对应的特征点　cur_un_pts　prev_un_pts
+  vector<int> ids;                           //每一个特征点的id
+  vector<int> track_cnt;                 //每个特征点被连续追踪的次数
+  map<int, cv::Point2f> cur_un_pts_map;  //current frame每一个特征点id以及　un_pts
+  map<int, cv::Point2f> prev_un_pts_map; //preveal frame每一个特征点id以及　un_pts
   camodocal::CameraPtr m_camera;
   double cur_time;
   double prev_time;

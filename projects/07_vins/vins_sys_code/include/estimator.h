@@ -88,7 +88,7 @@ class Estimator
 
     Matrix3d back_R0, last_R, last_R0;
     Vector3d back_P0, last_P, last_P0;
-    double Headers[(WINDOW_SIZE + 1)];
+    double Headers[(WINDOW_SIZE + 1)];//窗口中每一个cam帧的时间戳
 
     IntegrationBase *pre_integrations[(WINDOW_SIZE + 1)];
     Vector3d acc_0, gyr_0;
@@ -100,7 +100,7 @@ class Estimator
     int frame_count;
     int sum_of_outlier, sum_of_back, sum_of_front, sum_of_invalid;
 
-    FeatureManager f_manager;
+    FeatureManager f_manager;//维护 feature的类
     MotionEstimator m_estimator;
     InitialEXRotation initial_ex_rotation;
 
@@ -127,7 +127,7 @@ class Estimator
     // MarginalizationInfo *last_marginalization_info;
     vector<double *> last_marginalization_parameter_blocks;
 
-    map<double, ImageFrame> all_image_frame;
+    map<double, ImageFrame> all_image_frame;//维护 cam frame的map 以cam帧相对应的时间戳为key
     IntegrationBase *tmp_pre_integration;
 
     //relocalization variable

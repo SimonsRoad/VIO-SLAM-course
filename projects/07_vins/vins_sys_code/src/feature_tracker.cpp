@@ -76,7 +76,13 @@ void FeatureTracker::addPoints()
 }
 
 /*
- * 
+ *
+ * - cv::createCLAHE(3.0, cv::Size(8, 8)); //直方图均衡
+ * - cv::calcOpticalFlowPyrLK(cur_img, forw_img, cur_pts, forw_pts, status, err, cv::Size(21, 21), 3); //KLT光流追踪
+ * - rejectWithF();去除outlier
+ * - setMask();
+ * - cv::goodFeaturesToTrack(forw_img, n_pts, MAX_CNT - forw_pts.size(), 0.01, MIN_DIST, mask);//新提取特征点 做补充
+ * - undistortedPoints();// cur_pts --> cur_un_pts 并计算　cur_pts在ｘ,y方向的运动速度pts_velocity [最有用的数据都在这里了]
  */
 void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
 {
@@ -155,7 +161,7 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
                 cout << "mask type wrong " << endl;
             if (mask.size() != forw_img.size())
                 cout << "wrong size " << endl;
-            cv::goodFeaturesToTrack(forw_img, n_pts, MAX_CNT - forw_pts.size(), 0.01, MIN_DIST, mask);
+            cv::goodFeaturesToTrack(forw_img, n_pts, MAX_CNT - forw_pts.size(), 0.01, MIN_DIST, mask);//新提取特征点
         }
         else
             n_pts.clear();
@@ -171,7 +177,7 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
     prev_un_pts = cur_un_pts;
     cur_img = forw_img;
     cur_pts = forw_pts;
-    undistortedPoints();
+    undistortedPoints();// cur_pts --> cur_un_pts 并计算　cur_pts在ｘ,y方向的运动速度pts_velocity
     prev_time = cur_time;
 }
 
@@ -215,7 +221,7 @@ bool FeatureTracker::updateID(unsigned int i)
     if (i < ids.size())
     {
         if (ids[i] == -1)
-            ids[i] = n_id++;//每有一个新提的点id都会加一
+            ids[i] = n_id++; //每有一个新提的点id都会加一
         return true;
     }
     else
@@ -264,6 +270,7 @@ void FeatureTracker::showUndistortion(const string &name)
     cv::waitKey(0);
 }
 
+// cur_pts --> cur_un_pts 并计算　cur_pts在ｘ,y方向的运动速度
 void FeatureTracker::undistortedPoints()
 {
     cur_un_pts.clear();
@@ -291,7 +298,7 @@ void FeatureTracker::undistortedPoints()
                 it = prev_un_pts_map.find(ids[i]);
                 if (it != prev_un_pts_map.end())
                 {
-                    double v_x = (cur_un_pts[i].x - it->second.x) / dt;
+                    double v_x = (cur_un_pts[i].x - it->second.x) / dt;//旧的特征点　velocity计算
                     double v_y = (cur_un_pts[i].y - it->second.y) / dt;
                     pts_velocity.push_back(cv::Point2f(v_x, v_y));
                 }
@@ -300,7 +307,7 @@ void FeatureTracker::undistortedPoints()
             }
             else //新提的点
             {
-                pts_velocity.push_back(cv::Point2f(0, 0));
+                pts_velocity.push_back(cv::Point2f(0, 0));//新提取的特征点　velocity为零
             }
         }
     }

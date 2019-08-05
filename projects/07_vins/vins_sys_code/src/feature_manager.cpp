@@ -1,5 +1,5 @@
 #include "feature_manager.h"
-
+#include <iostream>
 int FeaturePerId::endFrame()
 {
     return start_frame + feature_per_frame.size() - 1;
@@ -41,29 +41,38 @@ int FeatureManager::getFeatureCount()
     return cnt;
 }
 
-
+/*
+ * addFeatureCheckParallax
+ *  - 将当前帧　frame_count国有特征点image特征点便利一遍，更新feature manager的feature list
+ *  -   对于新的点，feature list新加一个，对于老的点，在feature中找到，并更新在frame_count的观测 
+ *  - 
+ */
 bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double td)
 {
-    //ROS_DEBUG("input feature: %d", (int)image.size());
-    //ROS_DEBUG("num of feature: %d", getFeatureCount());
+    cout << "input feature: " << (int)image.size() << endl;
+    cout << "num of feature: " << getFeatureCount() << endl;
+    cout << "frame_count: " << frame_count << endl;
     double parallax_sum = 0;
     int parallax_num = 0;
     last_track_num = 0;
+    //一帧image中有很多特征点，　对于每个特征带你
     for (auto &id_pts : image)
     {
-        FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
+        FeaturePerFrame f_per_fra(id_pts.second[0].second, td); //7*1
 
         int feature_id = id_pts.first;
-        auto it = find_if(feature.begin(), feature.end(), [feature_id](const FeaturePerId &it)
-                          {
+        //管理的feature　list中查找这个特征点在list中
+        auto it = find_if(feature.begin(), feature.end(), [feature_id](const FeaturePerId &it) {
             return it.feature_id == feature_id;
-                          });
+        });
 
+        //如果是一个新的特征点，加入到feature manager的 feature list中
         if (it == feature.end())
         {
-            feature.push_back(FeaturePerId(feature_id, frame_count));
-            feature.back().feature_per_frame.push_back(f_per_fra);
+            feature.push_back(FeaturePerId(feature_id, frame_count));//更新id 和起始观测到的frame_cout
+            feature.back().feature_per_frame.push_back(f_per_fra);//添加当前cam下的观测
         }
+        //如果是一个老的特征点，给他添加一个当前cam下的观测即可
         else if (it->feature_id == feature_id)
         {
             it->feature_per_frame.push_back(f_per_fra);
@@ -71,11 +80,13 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
         }
     }
 
+    //如果连续追踪的特征点太少了，要赶紧把当前帧补为关键帧
     if (frame_count < 2 || last_track_num < 20)
         return true;
 
     for (auto &it_per_id : feature)
     {
+        //因为要算last second和　last third的视差，所以要保证有这两个
         if (it_per_id.start_frame <= frame_count - 2 &&
             it_per_id.start_frame + int(it_per_id.feature_per_frame.size()) - 1 >= frame_count - 1)
         {
@@ -111,17 +122,18 @@ void FeatureManager::debugShow()
         {
             //ROS_DEBUG("%d,", int(j.is_used));
             sum += j.is_used;
-            printf("(%lf,%lf) ",j.point(0), j.point(1));
+            printf("(%lf,%lf) ", j.point(0), j.point(1));
         }
         assert(it.used_num == sum);
     }
 }
 
+//找到两帧的共视的特征点对
 vector<pair<Vector3d, Vector3d>> FeatureManager::getCorresponding(int frame_count_l, int frame_count_r)
 {
     vector<pair<Vector3d, Vector3d>> corres;
     for (auto &it : feature)
-    {
+    {   //找到两个连续帧都有的特征点
         if (it.start_frame <= frame_count_l && it.endFrame() >= frame_count_r)
         {
             Vector3d a = Vector3d::Zero(), b = Vector3d::Zero();
@@ -131,8 +143,8 @@ vector<pair<Vector3d, Vector3d>> FeatureManager::getCorresponding(int frame_coun
             a = it.feature_per_frame[idx_l].point;
 
             b = it.feature_per_frame[idx_r].point;
-            
-            corres.push_back(make_pair(a, b));
+
+            corres.push_back(make_pair(a, b));//找到所有共视的特征点对
         }
     }
     return corres;
@@ -252,7 +264,6 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
         {
             it_per_id.estimated_depth = INIT_DEPTH;
         }
-
     }
 }
 
@@ -284,7 +295,7 @@ void FeatureManager::removeBackShiftDepth(Eigen::Matrix3d marg_R, Eigen::Vector3
             it->start_frame--;
         else
         {
-            Eigen::Vector3d uv_i = it->feature_per_frame[0].point;  
+            Eigen::Vector3d uv_i = it->feature_per_frame[0].point;
             it->feature_per_frame.erase(it->feature_per_frame.begin());
             if (it->feature_per_frame.size() < 2)
             {
@@ -357,8 +368,10 @@ double FeatureManager::compensatedParallax2(const FeaturePerId &it_per_id, int f
 {
     //check the second last frame is keyframe or not
     //parallax betwwen seconde last frame and third last frame
-    const FeaturePerFrame &frame_i = it_per_id.feature_per_frame[frame_count - 2 - it_per_id.start_frame];
-    const FeaturePerFrame &frame_j = it_per_id.feature_per_frame[frame_count - 1 - it_per_id.start_frame];
+    //这个特征点从start_frame到frame_count连续观测到，找出看到这个feature的 frame_count-1 frame-2帧
+    //frame_count是新加入的当前帧
+    const FeaturePerFrame &frame_i = it_per_id.feature_per_frame[frame_count - 2 - it_per_id.start_frame];//third last frame
+    const FeaturePerFrame &frame_j = it_per_id.feature_per_frame[frame_count - 1 - it_per_id.start_frame];//seconde last frame
 
     double ans = 0;
     Vector3d p_j = frame_j.point;
@@ -376,14 +389,12 @@ double FeatureManager::compensatedParallax2(const FeaturePerId &it_per_id, int f
     double dep_i = p_i(2);
     double u_i = p_i(0) / dep_i;
     double v_i = p_i(1) / dep_i;
-    double du = u_i - u_j, dv = v_i - v_j;
-
+    double du = u_i - u_j, dv = v_i - v_j;//在两个归一化相机平面的下坐标的差值
     double dep_i_comp = p_i_comp(2);
     double u_i_comp = p_i_comp(0) / dep_i_comp;
     double v_i_comp = p_i_comp(1) / dep_i_comp;
     double du_comp = u_i_comp - u_j, dv_comp = v_i_comp - v_j;
-
-    ans = max(ans, sqrt(min(du * du + dv * dv, du_comp * du_comp + dv_comp * dv_comp)));
+    ans = max(ans, sqrt(min(du * du + dv * dv,  du_comp * du_comp + dv_comp * dv_comp)));
 
     return ans;
 }

@@ -29,13 +29,13 @@ typedef std::shared_ptr<IMU_MSG const> ImuConstPtr;
 //image for vio
 struct IMG_MSG
 {
-    double header;//时间戳
-    vector<Vector3d> points;//特征点的3D　point
-    vector<int> id_of_point; //point_id
-    vector<float> u_of_point; //point_uv
+    double header;            //时间戳
+    vector<Vector3d> points;  //特征点在归一化相机坐标位置　x/z y/z 1
+    vector<int> id_of_point;  //point_id
+    vector<float> u_of_point; //point_uv  特征点像素坐标
     vector<float> v_of_point;
-    vector<float> velocity_x_of_point;//point_vx vy
-    vector<float> velocity_y_of_point;
+    vector<float> velocity_x_of_point; //point_vx vy
+    vector<float> velocity_y_of_point; //(x/z y/z) 运动速度
 };
 
 typedef std::shared_ptr<IMG_MSG const> ImgConstPtr;
@@ -51,9 +51,10 @@ public:
 
     void PubImuData(double dStampSec, const Eigen::Vector3d &vGyr,
                     const Eigen::Vector3d &vAcc);
+    void PubFeatureData(double dStampSec, const vector<int> &feature_id, const vector<Vector2d> &feature, const vector<Vector3d> &landmark, std::vector<Vector2d>& featureVelocity);
 
-    // thread: visual-inertial odometry
-    void ProcessBackEnd();
+        // thread: visual-inertial odometry
+        void ProcessBackEnd();
     void Draw();
 
 private:
@@ -77,15 +78,15 @@ private:
 
     std::condition_variable con;
     double current_time = -1;
-    std::queue<ImuConstPtr> imu_buf;//IMU date buffer
-    std::queue<ImgConstPtr> feature_buf;// image feature data buffer
+    std::queue<ImuConstPtr> imu_buf;     //IMU date buffer
+    std::queue<ImgConstPtr> feature_buf; // image feature data buffer
     // std::queue<PointCloudConstPtr> relo_buf;
     int sum_of_wait = 0;
 
-    std::mutex m_buf;
+    std::mutex m_buf;// m_buf　保护imu_buf  feature_buf
     std::mutex m_state;
     std::mutex i_buf;
-    std::mutex m_estimator;
+    std::mutex m_estimator;//保护　vector<pair<vector<ImuConstPtr>, ImgConstPtr>> measurements; //一组imu和一帧图像对应的数据
 
     double latest_time;
     Eigen::Vector3d tmp_P;

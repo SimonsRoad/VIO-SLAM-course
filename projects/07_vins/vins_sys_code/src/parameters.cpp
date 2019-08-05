@@ -76,7 +76,7 @@ void readParameters(string config_file)
     string OUTPUT_PATH;
     fsSettings["output_path"] >> OUTPUT_PATH;
     VINS_RESULT_PATH = OUTPUT_PATH + "/vins_result_no_loop.txt";
-    // cout << "result path " << VINS_RESULT_PATH << endl;
+    cout << "result path " << VINS_RESULT_PATH << endl;
     // ofstream fout(VINS_RESULT_PATH, ios::out);
     // fout.close();
 
