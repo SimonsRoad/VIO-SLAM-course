@@ -49,9 +49,9 @@ int FeatureManager::getFeatureCount()
  */
 bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double td)
 {
-    cout << "input feature: " << (int)image.size() << endl;
-    cout << "num of feature: " << getFeatureCount() << endl;
-    cout << "frame_count: " << frame_count << endl;
+    // cout << "input feature: " << (int)image.size() << endl;
+    // cout << "num of feature: " << getFeatureCount() << endl;
+    // cout << "frame_count: " << frame_count << endl;
     double parallax_sum = 0;
     int parallax_num = 0;
     last_track_num = 0;
@@ -133,7 +133,7 @@ vector<pair<Vector3d, Vector3d>> FeatureManager::getCorresponding(int frame_coun
 {
     vector<pair<Vector3d, Vector3d>> corres;
     for (auto &it : feature)
-    {   //找到两个连续帧都有的特征点
+    {   //找到两个帧都有的特征点
         if (it.start_frame <= frame_count_l && it.endFrame() >= frame_count_r)
         {
             Vector3d a = Vector3d::Zero(), b = Vector3d::Zero();
@@ -203,7 +203,7 @@ VectorXd FeatureManager::getDepthVector()
         if (!(it_per_id.used_num >= 2 && it_per_id.start_frame < WINDOW_SIZE - 2))
             continue;
 #if 1
-        dep_vec(++feature_index) = 1. / it_per_id.estimated_depth;
+        dep_vec(++feature_index) = 1. / it_per_id.estimated_depth;//这个初始是用三角化估计的
 #else
         dep_vec(++feature_index) = it_per_id->estimated_depth;
 #endif
@@ -221,7 +221,8 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
 
         if (it_per_id.estimated_depth > 0)
             continue;
-        int imu_i = it_per_id.start_frame, imu_j = imu_i - 1;
+        int imu_i = it_per_id.start_frame;
+        int imu_j = imu_i - 1;
 
         assert(NUM_OF_CAM == 1);
         Eigen::MatrixXd svd_A(2 * it_per_id.feature_per_frame.size(), 4);

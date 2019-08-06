@@ -108,7 +108,7 @@ void System::PubImageData(double dStampSec, Mat &img)
         if (!completed)
             break;
     }
-    cout << "current frame feature tracking time: " << t_r.toc() << endl;
+    // cout << "current frame feature tracking time: " << t_r.toc() << endl;
     if (PUB_THIS_FRAME)
     {
         pub_count++;
@@ -150,8 +150,8 @@ void System::PubImageData(double dStampSec, Mat &img)
             {
                 m_buf.lock();
                 feature_buf.push(feature_points); //将当前帧tracking feature 放入　feature buf
-                cout << "5 PubImage t : " << fixed << feature_points->header
-                     << " feature_buf size: " << feature_buf.size() << endl;
+                // cout << "5 PubImage t : " << fixed << feature_points->header
+                //      << " feature_buf size: " << feature_buf.size() << endl;
                 m_buf.unlock();
                 con.notify_one(); //随机唤醒一个等待的线程
             }
@@ -240,7 +240,7 @@ vector<pair<vector<ImuConstPtr>, ImgConstPtr>> System::getMeasurements()
         }
 
         // cout << "imu_buf.back() time: " <<imu_buf.back()->header << "feature_buf.front() time: "<<feature_buf.front()->header << endl;
-        cout << "imu_buf size: " << imu_buf.size() << "  feature_buf size: " << feature_buf.size() << endl;
+        // cout << "imu_buf size: " << imu_buf.size() << "  feature_buf size: " << feature_buf.size() << endl;
         //正常情况　[--------O---] 如果imu back小于　feature_front,[[----------- O]]说明imu都在cam前面,需要等imu一会儿，imu频率很高的，要是系统跑起来，imubuffer可定会超过 feature buffer,所以只能发生在beginning
         if (!(imu_buf.back()->header > feature_buf.front()->header + estimator.td)) //imu_back < feature_front　所有的imu都在cam前面
         {
@@ -314,10 +314,20 @@ void System::PubImuData(double dStampSec, const Eigen::Vector3d &vGyr,
 
 // thread: visual-inertial odometry
 /*
- *　- getMeasurements  得到一组或者多组对齐的　若干imu和一帧图像对应的数据
- * - estimator.processIMU(dt, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz)); 对于每一帧imu
+ * - getMeasurements  得到一组或者多组对齐的　若干imu和一帧图像对应的数据
+
+ * -  estimator.processIMU(dt, Vector3d(dx, dy, dz), Vector3d(rx, ry, rz));
+ *      利用这一包的imu数据计算一个预积分增量，后面会填充到对应的视觉帧里，　
+ *      同时计算一个imu积分，来估计每一个body的P V R, 后面的非线性优化会对这些值调优
  * 
- * -
+ * -  estimator.processImage(image, img_msg->header); 对于每一帧imu的所有点
+ *      　　把当前帧的特征点更新到feature list中，根据特征点的新旧比以及视差，设定关键帧和边缘化策略
+ *  　　    把当前帧更新到all_image_frame中
+ * -　当然还有很多的操作都在　processImage中进行
+ *          在线的imu-cam外参校准
+ *          系统初始化
+ *          把feature　list中的特征点三角化来估计深度
+ *          非线性优化的求解
  */
 void System::ProcessBackEnd()
 {
@@ -336,11 +346,11 @@ void System::ProcessBackEnd()
         });
         if (measurements.size() >= 1)
         {
-            cout << "1 getMeasurements size: " << measurements.size()
-                 << " imu size: " << measurements[0].first.size() //这一帧图像前面有多少imu
-                 << " cam size: " << measurements.size()
-                 << " feature_buf size: " << feature_buf.size()
-                 << " imu_buf size: " << imu_buf.size() << endl;
+            // cout << "1 getMeasurements size: " << measurements.size()
+            //      << " imu size: " << measurements[0].first.size() //这一帧图像前面有多少imu
+            //      << " cam size: " << measurements.size()
+            //      << " feature_buf size: " << feature_buf.size()
+            //      << " imu_buf size: " << imu_buf.size() << endl;
         }
         lk.unlock();//当getMeasurements　参数传递给measurements后，赶紧让出互斥量，重新获取m_estimator互斥量控制权
         m_estimator.lock();
@@ -392,8 +402,8 @@ void System::ProcessBackEnd()
                 }
             }
 
-            cout << "processing vision data with stamp:" << img_msg->header
-                 << " img_msg->points.size: " << img_msg->points.size() << endl;
+            // cout << "processing vision data with stamp:" << img_msg->header
+            //      << " img_msg->points.size: " << img_msg->points.size() << endl;
 
             // TicToc t_s;
             // img_msg是一帧cam对应的数据

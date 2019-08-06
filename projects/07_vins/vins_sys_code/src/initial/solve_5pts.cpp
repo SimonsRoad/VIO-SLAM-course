@@ -189,7 +189,9 @@ namespace cv {
     }
 }
 
-
+/*
+ * 五点法计算两帧直接的 R T
+ */
 bool MotionEstimator::solveRelativeRT(const vector<pair<Vector3d, Vector3d>> &corres, Matrix3d &Rotation, Vector3d &Translation)
 {
     if (corres.size() >= 15)

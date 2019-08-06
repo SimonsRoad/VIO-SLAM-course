@@ -28,8 +28,8 @@ private:
                     cv::Mat_<double> &t1, cv::Mat_<double> &t2);
     int frame_count;
 
-    vector<Matrix3d> Rc;
-    vector<Matrix3d> Rimu;
+    vector<Matrix3d> Rc;//视觉帧两帧的旋转
+    vector<Matrix3d> Rimu;//由IMU预积分增量得到相对应的两个视觉帧旋转
     vector<Matrix3d> Rc_g;
     Matrix3d ric;
 };

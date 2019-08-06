@@ -79,6 +79,7 @@ class Estimator
     Matrix3d ric[NUM_OF_CAM];
     Vector3d tic[NUM_OF_CAM];
 
+    //维护窗口内每一帧frame_count在imu的P V R Ba Bg
     Vector3d Ps[(WINDOW_SIZE + 1)];
     Vector3d Vs[(WINDOW_SIZE + 1)];
     Matrix3d Rs[(WINDOW_SIZE + 1)];
@@ -87,12 +88,13 @@ class Estimator
     double td;
 
     Matrix3d back_R0, last_R, last_R0;
-    Vector3d back_P0, last_P, last_P0;
+    Vector3d back_P0, last_P, last_P0;//last_P=Ps[WINDOW_SIZE] last_P0=Ps[0]
     double Headers[(WINDOW_SIZE + 1)];//窗口中每一个cam帧的时间戳
 
-    IntegrationBase *pre_integrations[(WINDOW_SIZE + 1)];
-    Vector3d acc_0, gyr_0;
+    IntegrationBase *pre_integrations[(WINDOW_SIZE + 1)];//每一个当前帧　frame_cuont,所指向的预积分部分
+    Vector3d acc_0, gyr_0;//系统认定的第一帧IMU数据，后面会重新赋值，代表当前帧的上一帧数据
 
+    //数组的长度为窗口长度+1，每个数组元素是一个vector，存储当前frame_count的　dt acc gyro测量
     vector<double> dt_buf[(WINDOW_SIZE + 1)];
     vector<Vector3d> linear_acceleration_buf[(WINDOW_SIZE + 1)];
     vector<Vector3d> angular_velocity_buf[(WINDOW_SIZE + 1)];
@@ -102,7 +104,7 @@ class Estimator
 
     FeatureManager f_manager;//维护 feature的类
     MotionEstimator m_estimator;
-    InitialEXRotation initial_ex_rotation;
+    InitialEXRotation initial_ex_rotation;//相对外参在线校准的功能类
 
     bool first_imu;
     bool is_valid, is_key;

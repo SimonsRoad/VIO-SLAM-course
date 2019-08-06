@@ -8,12 +8,23 @@ InitialEXRotation::InitialEXRotation(){
     ric = Matrix3d::Identity();
 }
 
+/*
+ * 相对外参在线校准
+ * - 输入：　连续帧相匹配的特征点对，连续帧之间的预积分增量
+ * - 输出：　相对的外参旋转 Ric
+ * 
+ * - 先根据对极几何约束求解视觉两帧之间的Ｒ
+ * - 根据预积分增量，求解IMU两帧之间的R
+ *  - 利用两者的约束，构建一个齐次线性方程组
+ * - 根据上一次求解的值，算一个鲁棒核函数权重
+ * - 然后对齐次方程组使用SVD分解求出Rbc
+ */
 bool InitialEXRotation::CalibrationExRotation(vector<pair<Vector3d, Vector3d>> corres, Quaterniond delta_q_imu, Matrix3d &calib_ric_result)
 {
     frame_count++;
-    Rc.push_back(solveRelativeR(corres));
-    Rimu.push_back(delta_q_imu.toRotationMatrix());
-    Rc_g.push_back(ric.inverse() * delta_q_imu * ric);
+    Rc.push_back(solveRelativeR(corres));//对极几何得到的两帧之间旋转
+    Rimu.push_back(delta_q_imu.toRotationMatrix());//预积分增量在IMU系下的一个旋转
+    Rc_g.push_back(ric.inverse() * delta_q_imu * ric);//IMU转换到视觉帧的旋转
 
     Eigen::MatrixXd A(frame_count * 4, 4);
     A.setZero();
@@ -26,12 +37,12 @@ bool InitialEXRotation::CalibrationExRotation(vector<pair<Vector3d, Vector3d>> c
         double angular_distance = 180 / M_PI * r1.angularDistance(r2);
         //ROS_DEBUG("%d %f", i, angular_distance);
 
-        double huber = angular_distance > 5.0 ? 5.0 / angular_distance : 1.0;
+        double huber = angular_distance > 5.0 ? 5.0 / angular_distance : 1.0;//加一个huber，约束一下outlier, 如果差别太大的话就把它的权重放小
         ++sum_ok;
         Matrix4d L, R;
 
-        double w = Quaterniond(Rc[i]).w();
-        Vector3d q = Quaterniond(Rc[i]).vec();
+        double w = Quaterniond(Rc[i]).w();//实部
+        Vector3d q = Quaterniond(Rc[i]).vec();//虚部
         L.block<3, 3>(0, 0) = w * Matrix3d::Identity() + Utility::skewSymmetric(q);
         L.block<3, 1>(0, 3) = q;
         L.block<1, 3>(3, 0) = -q.transpose();
@@ -49,13 +60,13 @@ bool InitialEXRotation::CalibrationExRotation(vector<pair<Vector3d, Vector3d>> c
     }
 
     JacobiSVD<MatrixXd> svd(A, ComputeFullU | ComputeFullV);
-    Matrix<double, 4, 1> x = svd.matrixV().col(3);
+    Matrix<double, 4, 1> x = svd.matrixV().col(3);//奇异值最小的特征向量即为所求，四元素表示的
     Quaterniond estimated_R(x);
     ric = estimated_R.toRotationMatrix().inverse();
     //cout << svd.singularValues().transpose() << endl;
     //cout << ric << endl;
     Vector3d ric_cov;
-    ric_cov = svd.singularValues().tail<3>();
+    ric_cov = svd.singularValues().tail<3>();//找到SVD分解的前三个奇异值
     if (frame_count >= WINDOW_SIZE && ric_cov(1) > 0.25)
     {
         calib_ric_result = ric;
@@ -65,6 +76,10 @@ bool InitialEXRotation::CalibrationExRotation(vector<pair<Vector3d, Vector3d>> c
         return false;
 }
 
+/*
+ *
+ * 对极几何约束解出两帧之间Ｒ
+ */
 Matrix3d InitialEXRotation::solveRelativeR(const vector<pair<Vector3d, Vector3d>> &corres)
 {
     if (corres.size() >= 9)

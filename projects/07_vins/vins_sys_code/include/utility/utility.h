@@ -8,6 +8,7 @@
 class Utility
 {
   public:
+  //给定一个角速度的变化增量，输出一个四元素
     template <typename Derived>
     static Eigen::Quaternion<typename Derived::Scalar> deltaQ(const Eigen::MatrixBase<Derived> &theta)
     {
@@ -23,6 +24,7 @@ class Utility
         return dq;
     }
 
+    //给定一个向量，输出它的反对称矩阵
     template <typename Derived>
     static Eigen::Matrix<typename Derived::Scalar, 3, 3> skewSymmetric(const Eigen::MatrixBase<Derived> &q)
     {
