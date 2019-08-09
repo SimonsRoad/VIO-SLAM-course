@@ -301,6 +301,8 @@ void FeatureTracker::undistortedPoints()
                     double v_x = (cur_un_pts[i].x - it->second.x) / dt;//旧的特征点　velocity计算
                     double v_y = (cur_un_pts[i].y - it->second.y) / dt;
                     pts_velocity.push_back(cv::Point2f(v_x, v_y));
+                    // cout << "current velocity: " << v_x << " " << v_y << endl;
+                    
                 }
                 else
                     pts_velocity.push_back(cv::Point2f(0, 0));

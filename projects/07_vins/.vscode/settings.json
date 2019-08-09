@@ -50,6 +50,11 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "utility": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "dense": "cpp",
+        "hash_map": "cpp",
+        "bitset": "cpp",
+        "algorithm": "cpp",
+        "cfenv": "cpp"
     }
 }

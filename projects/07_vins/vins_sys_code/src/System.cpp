@@ -5,10 +5,10 @@
 using namespace std;
 using namespace cv;
 using namespace pangolin;
-System::System(string sConfig_file_)
+System::System(string sConfig_file)
     : bStart_backend(true)
 {
-    string sConfig_file = sConfig_file_ + "euroc_config.yaml";
+    //string sConfig_file = sConfig_file_ + "euroc_config.yaml";
 
     cout << "1 System() sConfig_file: " << sConfig_file << endl;
     readParameters(sConfig_file);
@@ -176,7 +176,7 @@ void System::PubImageData(double dStampSec, Mat &img)
 }
 
 //如果其他的module已经提取出来图像的特征，并对特征进行了匹配，我们只需要将这些点放入feature buffer
-void System::PubFeatureData(double dStampSec, const vector<int> &feature_id, const vector<Vector2d> &feature, const vector<Vector3d> &landmak, std::vector<Vector2d> &featureVelocity)
+void System::PubFeatureData(double dStampSec, const vector<int> &feature_id, const vector<Vector2d> &feature, const vector<Vector2d> &observation, std::vector<Vector2d> &featureVelocity)
 {
 
     shared_ptr<IMG_MSG> feature_points(new IMG_MSG());
@@ -196,8 +196,8 @@ void System::PubFeatureData(double dStampSec, const vector<int> &feature_id, con
             feature_points->points.push_back(Vector3d(x_value, y_value, z));
             //feature_points->points.push_back(landmak[j]);
             feature_points->id_of_point.push_back(p_id * NUM_OF_CAM + i);
-            feature_points->u_of_point.push_back(feature[j].x());
-            feature_points->v_of_point.push_back(feature[j].y());
+            feature_points->u_of_point.push_back(observation[j].x());
+            feature_points->v_of_point.push_back(observation[j].y());
             feature_points->velocity_x_of_point.push_back(featureVelocity[j].x());
             feature_points->velocity_y_of_point.push_back(featureVelocity[j].y());
         }
@@ -211,7 +211,7 @@ void System::PubFeatureData(double dStampSec, const vector<int> &feature_id, con
         {
             m_buf.lock();
             feature_buf.push(feature_points);
-            // cout << "5 PubImage t : " << fixed << feature_points->header
+            // cout << " PubImage t : " << fixed << feature_points->header
             //     << " feature_buf size: " << feature_buf.size() << endl;
             m_buf.unlock();
             con.notify_one(); //随机唤醒一个等待的线程
@@ -342,7 +342,7 @@ void System::ProcessBackEnd()
         //前一个参数等待其他线程触发con.notify_one()　来解锁 unique_lock<mutex> lk(m_buf)
         //后一个参数lamda函数，如果返回false 就让出互斥量给其他线程，继续休眠，如果返回true，则可以独占这个互斥量，往下执行
         con.wait(lk, [&] {
-            return (measurements = getMeasurements()).size() != 0;//因为操作　getMeasurements也会读写imu_buf和feature buf,所以还是需要m_buf的互斥锁的
+            return (measurements = getMeasurements()).size() != 0; //因为操作　getMeasurements也会读写imu_buf和feature buf,所以还是需要m_buf的互斥锁的
         });
         if (measurements.size() >= 1)
         {
@@ -352,7 +352,7 @@ void System::ProcessBackEnd()
             //      << " feature_buf size: " << feature_buf.size()
             //      << " imu_buf size: " << imu_buf.size() << endl;
         }
-        lk.unlock();//当getMeasurements　参数传递给measurements后，赶紧让出互斥量，重新获取m_estimator互斥量控制权
+        lk.unlock(); //当getMeasurements　参数传递给measurements后，赶紧让出互斥量，重新获取m_estimator互斥量控制权
         m_estimator.lock();
         for (auto &measurement : measurements)
         {
@@ -431,7 +431,6 @@ void System::ProcessBackEnd()
             TicToc t_processImage;
             estimator.processImage(image, img_msg->header); // 转换成vins的　cam数据的组织结构
 
-
             if (estimator.solver_flag == Estimator::SolverFlag::NON_LINEAR)
             {
                 Vector3d p_wi;
@@ -498,7 +497,46 @@ void System::Draw()
             }
             glEnd();
         }
+
+        // show the imu integration pose
+        {
+            glPointSize(5);
+            glBegin(GL_POINTS);
+            for (size_t i = 0; i < imu_integration_poses.size(); ++i)
+            {
+                Vector3d p_wi = imu_integration_poses[i];
+                glColor3f(0, 1, 0);
+                glVertex3d(p_wi[0], p_wi[1], p_wi[2]);
+            }
+            glEnd();
+        }
+
         pangolin::FinishFrame();
         usleep(5000); // sleep 5 ms
     }
+}
+
+void System::midPointIntegration(double _dt, 
+                          Eigen::Vector3d &acc_0,     Eigen::Vector3d &gyro_0,
+                          Eigen::Vector3d &acc_1,     Eigen::Vector3d &gyro_1,
+                          Eigen::Vector3d &acc_bias,  Eigen::Vector3d &gyro_bias,
+                          Eigen::Vector3d &delta_p, Eigen::Quaterniond &delta_q, Eigen::Vector3d &delta_v
+                        )
+{
+    Eigen::Vector3d un_gyro = 0.5 * (gyro_0 + gyro_1) - gyro_bias;
+    delta_q = delta_q * Eigen::Quaterniond(1, un_gyro(0)*_dt/2, un_gyro(1)*_dt/2, un_gyro(2)*_dt/2);
+
+    Eigen::Vector3d gw(0,0,-9.81);    // ENU frame
+    Eigen::Vector3d un_acc_0 = delta_q.toRotationMatrix() * (acc_0 - acc_bias) + gw;
+    Eigen::Vector3d un_acc_1 = delta_q.toRotationMatrix() * (acc_1 - acc_bias) + gw;
+    Eigen::Vector3d un_acc = 0.5 * (un_acc_0 + un_acc_1);
+
+    // △v
+    delta_v = delta_v + un_acc*_dt;
+    
+    // △p
+    delta_p = delta_p + delta_v*_dt + 0.5*un_acc*_dt*_dt;
+
+    imu_integration_poses.push_back(delta_p);
+
 }

@@ -18,11 +18,12 @@ void save_points(std::string filename, std::vector<Eigen::Vector4d, Eigen::align
                    <<p(3)<<std::endl;
     }
 }
+
 void save_features(std::string filename,
                    std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > points,
                    std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > features)
 {
-    std::ofstream save_points(filename.c_str(), std::fstream::out|std::fstream::in);
+    std::ofstream save_points(filename.c_str()); //, std::fstream::out|std::fstream::in
     // try
     // {
     //     if (save_points.fail())
@@ -37,7 +38,7 @@ void save_features(std::string filename,
     //     exit(1);
     // } 
     if(!save_points.is_open())
-        std::cout << "can not open the save_points file" << std::endl;
+        std::cout << "can not open the save_points file：" << filename << std::endl;
     for (int i = 0; i < points.size(); ++i) {
         Eigen::Vector4d p = points[i];
         Eigen::Vector2d f = features[i];

@@ -8,18 +8,18 @@ output_path: "../output"
 #camera calibration 
 model_type: PINHOLE
 camera_name: camera
-image_width: 752
-image_height: 480
+image_width: 640
+image_height: 640
 distortion_parameters:
-   k1: -2.917e-01
-   k2: 8.228e-02
+   k1: -2.917e-03
+   k2: 8.228e-03
    p1: 5.333e-05
    p2: -1.578e-04
 projection_parameters:
-   fx: 4.616e+02
-   fy: 4.603e+02
-   cx: 3.630e+02
-   cy: 2.481e+02
+   fx: 4.60e+02
+   fy: 4.60e+02
+   cx: 3.20e+02
+   cy: 3.20e+02
 
 # Extrinsic parameter between IMU and Camera.
 estimate_extrinsic: 0   # 0  Have an accurate extrinsic parameters. We will trust the following imu^R_cam, imu^T_cam, don't change it.
@@ -31,9 +31,9 @@ extrinsicRotation: !!opencv-matrix
    rows: 3
    cols: 3
    dt: d
-   data: [0.0148655429818, -0.999880929698, 0.00414029679422,
-           0.999557249008, 0.0149672133247, 0.025715529948, 
-           -0.0257744366974, 0.00375618835797, 0.999660727178]
+   data: [1, -0.0, 0.0,
+           0.0, 1, 0.0, 
+           -0.0, 0.0, 1]
 #Translation from camera frame to imu frame, imu^T_cam
 extrinsicTranslation: !!opencv-matrix
    rows: 3

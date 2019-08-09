@@ -51,11 +51,18 @@ public:
 
     void PubImuData(double dStampSec, const Eigen::Vector3d &vGyr,
                     const Eigen::Vector3d &vAcc);
-    void PubFeatureData(double dStampSec, const vector<int> &feature_id, const vector<Vector2d> &feature, const vector<Vector3d> &landmark, std::vector<Vector2d>& featureVelocity);
+    void PubFeatureData(double dStampSec, const vector<int> &feature_id, const vector<Vector2d> &feature, const vector<Vector2d> &observation, std::vector<Vector2d> &featureVelocity);
 
         // thread: visual-inertial odometry
         void ProcessBackEnd();
     void Draw();
+
+    void midPointIntegration(double _dt, 
+                          Eigen::Vector3d &acc_0,     Eigen::Vector3d &gyro_0,
+                          Eigen::Vector3d &acc_1,     Eigen::Vector3d &gyro_1,
+                          Eigen::Vector3d &acc_bias,  Eigen::Vector3d &gyro_bias,
+                          Eigen::Vector3d &delta_p, Eigen::Quaterniond &delta_q, Eigen::Vector3d &delta_v
+                        );
 
 private:
     //feature tracker
@@ -103,4 +110,6 @@ private:
     std::vector<Eigen::Vector3d> vPath_to_draw;
     bool bStart_backend;
     std::vector<std::pair<std::vector<ImuConstPtr>, ImgConstPtr>> getMeasurements();
+
+    vector<Vector3d> imu_integration_poses;
 };

@@ -15,7 +15,7 @@ public:
 
     // time
     int imu_frequency = 200;
-    int cam_frequency = 30;
+    int cam_frequency = 20;
     double imu_timestep = 1./imu_frequency;
     double cam_timestep = 1./cam_frequency;
     double t_start = 0.;
@@ -33,15 +33,17 @@ public:
     // cam f
     double fx = 460;
     double fy = 460;
-    double cx = 255;
-    double cy = 255;
+    double cx = 320;
+    double cy = 320;
     double image_w = 640;
     double image_h = 640;
 
+    Eigen::Matrix3d K = Eigen::Matrix3d::Zero();
+
 
     // 外参数
-    Eigen::Matrix3d R_bc;   // cam to body
-    Eigen::Vector3d t_bc;     // cam to body
+    Eigen::Matrix3d R_bc = Eigen::Matrix3d::Identity();   // cam to body
+    Eigen::Vector3d t_bc = Eigen::Vector3d::Zero();     // cam to body
 
 };
 

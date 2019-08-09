@@ -20,6 +20,7 @@ using namespace Eigen;
 const int nDelayTimes = 2;
 string sData_path = "/home/ubuntu/dataset/EuRoc/MH-05/";
 string sConfig_path = "../config/";
+string sConfig_file = "../config/euroc_config.yaml";
 
 std::shared_ptr<System> pSystem;
 
@@ -104,7 +105,7 @@ int main(int argc, char **argv)
 	// sData_path = argv[1];
 	// sConfig_path = argv[2];
 
-	pSystem.reset(new System(sConfig_path));
+	pSystem.reset(new System(sConfig_file));
 	
 	//启动多线程
 	std::thread thd_BackEnd(&System::ProcessBackEnd, pSystem);

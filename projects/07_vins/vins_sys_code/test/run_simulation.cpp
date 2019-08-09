@@ -10,6 +10,7 @@
 #include <cv.h>
 #include <opencv2/opencv.hpp>
 #include <highgui.h>
+#include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
 #include "System.h"
 
@@ -17,8 +18,9 @@ using namespace std;
 using namespace cv;
 using namespace Eigen;
 
-const int nDelayTimes = 0;
+const int nDelayTimes = 2;
 string sConfig_path = "../config/";
+string sConfig_file = "../config/simulate_config.yaml";
 string sData_path = "/home/ubuntu/coding/VIO-SLAM-course/projects/07_vins/vins_sys_code/data/";
 string feature_file = "/keyframe/"; //文件夹下有每一帧cam提取的pose
 string imu_data = "imu_pose.txt";   // imu_raw data
@@ -45,12 +47,33 @@ void PubImuData()
 	Vector3d t;
 	Vector3d vAcc;
 	Vector3d vGyr;
+
+	double lastTime = 0;
+	Vector3d imuPwb;
+	Quaterniond imuQwb;
+	Vector3d imuVwb;
+	Vector3d imuBa;
+	Vector3d imuBg;
+	Vector3d imuAcc;
+	Vector3d imuGyro;
+
 	while (std::getline(fsImu, sImu_line) && !sImu_line.empty()) // read imu data　every line
 	{
 		std::istringstream ssImuData(sImu_line);
 		ssImuData >> dStampNSec >> q.w() >> q.x() >> q.y() >> q.z() >> t.x() >> t.y() >> t.z() >> vGyr.x() >> vGyr.y() >> vGyr.z() >> vAcc.x() >> vAcc.y() >> vAcc.z();
-		// cout << "Imu t: " << fixed << dStampNSec << " gyr: " << vGyr.transpose() << " acc: " << vAcc.transpose() << endl;
+		cout << "Imu t: " << fixed << dStampNSec << " gyr: " << vGyr.transpose() << " acc: " << vAcc.transpose() << endl;
 		pSystem->PubImuData(dStampNSec, vGyr, vAcc); //带时间戳的IMU数据载入系统，
+
+		//测试imu　积分
+		pSystem->midPointIntegration(dStampNSec - lastTime,
+									 imuAcc, imuGyro,
+									 vAcc, vGyr,
+									 imuBa, imuBg,
+									 imuPwb, imuQwb, imuVwb);
+		lastTime = dStampNSec;
+		imuAcc = vAcc;
+		imuGyro = vGyr;
+
 		usleep(5000 * nDelayTimes);
 	}
 	fsImu.close();
@@ -75,54 +98,69 @@ void PubImageData()
 	double dStampNSec;
 	string sImgFileName;
 
-	while (std::getline(fsImage, sImage_line) && !sImage_line.empty())// 读取每一行，每一行都是一副图片所提的所有特征点
+	while (std::getline(fsImage, sImage_line) && !sImage_line.empty()) // 读取每一行，每一行都是一副图片所提的所有特征点
+	{
+		std::istringstream ssImuData(sImage_line);
+		ssImuData >> dStampNSec >> sImgFileName;
+		// cout << "Image t : " << fixed << dStampNSec << " Name: " << sImgFileName << endl;
+
+		string imagePath = sData_path + sImgFileName;
+		//读取每个camera提取的特征点
+
+		ifstream featuresImage;
+		featuresImage.open(imagePath.c_str());
+		if (!featuresImage.is_open())
 		{
-			std::istringstream ssImuData(sImage_line);
-			ssImuData >> dStampNSec >> sImgFileName;
-			// cout << "Image t : " << fixed << dStampNSec << " Name: " << sImgFileName << endl;
-
-			string imagePath = sData_path + sImgFileName;
-			//读取每个camera提取的特征点
-
-			ifstream featuresImage;
-			featuresImage.open(imagePath.c_str());
-			if (!featuresImage.is_open())
-			{
-				cerr << "Failed to open features file! " << imagePath << endl;
-				return;
-			}
-			std::string featuresImage_line;
-			std::vector<int> feature_id;
-			int ids = 0;
-			std::vector<Vector3d> landmark;
-			std::vector<Vector2d> featurePoint;
-			std::vector<Vector2d> featureVelocity;
-			static double lastTime;
-			static std::vector<Vector2d> lastfeaturePoint(50);
-			while (std::getline(featuresImage, featuresImage_line) && !featuresImage_line.empty()) // 读取一副图像的所有体征的，每一行就是一个特征点
-			{
-				Vector3d current_landmark;
-				Vector2d current_featurePoint;
-				Vector2d current_featureVelocity;
-
-				double temp;
-				std::istringstream ssfeatureData(featuresImage_line);
-				ssfeatureData >> current_landmark.x() >> current_landmark.y() >> current_landmark.z() >> temp >> current_featurePoint.x() >> current_featurePoint.y();
-				landmark.push_back(current_landmark);
-				featurePoint.push_back(current_featurePoint);
-				feature_id.push_back(ids);
-				current_featureVelocity.x() =  (current_featurePoint.x() - lastfeaturePoint[ids].x())/(dStampNSec-lastTime);
-				current_featureVelocity.y() =  (current_featurePoint.y() - lastfeaturePoint[ids].y())/(dStampNSec-lastTime);
-				featureVelocity.push_back(current_featureVelocity);
-
-				ids++;
-			}
-			featuresImage.close();
-			lastTime = dStampNSec;
-			lastfeaturePoint = featurePoint;
-			pSystem->PubFeatureData(dStampNSec, feature_id, featurePoint, landmark, featureVelocity); //带时间戳的feature point数据载入系统，
-			usleep(50000 * nDelayTimes);
+			cerr << "Failed to open features file! " << imagePath << endl;
+			return;
 		}
+		std::string featuresImage_line;
+		std::vector<int> feature_id;
+		int ids = 0;
+		std::vector<Vector3d> landmark;
+		std::vector<Vector2d> featurePoint;
+		std::vector<Vector2d> observation_feature;
+		std::vector<Vector2d> featureVelocity;
+		static double lastTime;
+		static std::vector<Vector2d> lastfeaturePoint(50);
+		while (std::getline(featuresImage, featuresImage_line) && !featuresImage_line.empty()) // 读取一副图像的所有体征的，每一行就是一个特征点
+		{
+			Vector3d current_landmark;			  //真实的３D点坐标，SLAM开始是不知道这个值的，所以先暂时不用
+			Vector2d current_featurePoint;		  //归一化相机坐标
+			Vector3d current_observation_feature; //像素坐标
+			Vector2d current_featureVelocity;	 //归一化相机坐标下点的运动速度
+
+			Eigen::Matrix3d K;
+			K << 460.0, 0, 320,
+				0, 460.0, 320,
+				0, 0, 0;
+
+			double temp;
+			std::istringstream ssfeatureData(featuresImage_line);
+			ssfeatureData >> current_landmark.x() >> current_landmark.y() >> current_landmark.z() >> temp >> current_featurePoint.x() >> current_featurePoint.y();
+			landmark.push_back(current_landmark);
+			featurePoint.push_back(current_featurePoint);
+			feature_id.push_back(ids);
+			current_featureVelocity.x() = (current_featurePoint.x() - lastfeaturePoint[ids].x()) / (dStampNSec - lastTime);
+			current_featureVelocity.y() = (current_featurePoint.y() - lastfeaturePoint[ids].y()) / (dStampNSec - lastTime);
+			featureVelocity.push_back(current_featureVelocity);
+
+			current_observation_feature = Eigen::Vector3d(current_featurePoint.x(), current_featurePoint.y(), 1);
+			current_observation_feature = K * current_observation_feature;
+			observation_feature.push_back(Vector2d(current_observation_feature.x(), current_observation_feature.y()));
+			// cout << "current observation point: " << current_observation_feature.x() << " " <<current_observation_feature.y() << " "<<current_observation_feature.z() << endl;
+			// cout << "current_camera point: " << current_featurePoint.x() << " " <<current_featurePoint.y()  << endl;
+			// cout << "current velocity point: " << current_featureVelocity.x() << " " <<current_featureVelocity.y() << endl;
+
+			ids++;
+		}
+		featuresImage.close();
+		lastTime = dStampNSec;
+		lastfeaturePoint = featurePoint;
+		pSystem->PubFeatureData(dStampNSec, feature_id, featurePoint, observation_feature, featureVelocity); //带时间戳的feature point数据载入系统，
+		cout << "Image t: " << fixed << dStampNSec << " featurePoint size: " << featurePoint.size() << " observation_feature size: " << observation_feature.size() << endl;
+		usleep(50000 * nDelayTimes);
+	}
 }
 
 int main(int argc, char **argv)
@@ -136,17 +174,17 @@ int main(int argc, char **argv)
 	// sData_path = argv[1];
 	// sConfig_path = argv[2];
 
-	pSystem.reset(new System(sConfig_path));
+	pSystem.reset(new System(sConfig_file));
 
 	//启动多线程
 	std::thread thd_BackEnd(&System::ProcessBackEnd, pSystem);
 
-	// sleep(5);
+	sleep(1);
 	std::thread thd_PubImuData(PubImuData); //imu数据的预处理－＞imu buf
 
 	std::thread thd_PubImageData(PubImageData); //image数据预处理-> image buf
 
-	//std::thread thd_Draw(&System::Draw, pSystem);//轨迹实时可视化的线程
+	std::thread thd_Draw(&System::Draw, pSystem); //轨迹实时可视化的线程
 
 	thd_PubImuData.join();
 	thd_PubImageData.join();

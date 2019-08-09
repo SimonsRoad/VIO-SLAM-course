@@ -160,6 +160,7 @@ int main()
     std::cout << "gentrate IMU data" << std::endl;
 
     // cam pose
+    // 修整cam_pose
     std::vector<MotionData> camdata;
     for (float t = params.t_start; t < params.t_end;)
     {
@@ -167,6 +168,7 @@ int main()
         MotionData imu = imuGen.MotionModel(t); // imu body frame to world frame motion
         MotionData cam;
 
+        //由这一时刻的IMU得到相应的cam　pose
         cam.timestamp = imu.timestamp;
         cam.Rwb = imu.Rwb * params.R_bc;           // cam frame in world frame
         cam.twb = imu.twb + imu.Rwb * params.t_bc; //  Tcw = Twb * Tbc ,  t = Rwb * tbc + twb
@@ -178,14 +180,18 @@ int main()
     save_Pose_asTUM("cam_pose_tum.txt", camdata);
     std::cout << "gentrate cam data" << std::endl; //timestamp t_xyz q_xyzw
 
-
     // points obs in image
     std::string file_list = "feature_files_list.txt"; //保存这些文件的列表
-    std::ofstream save_files_list(file_list, std::fstream::out);
+    std::ofstream save_files_list;
+    save_files_list.open(file_list);
+    if (!save_files_list.is_open())
+        std::cout << "can not open the save_points file" << std::endl;
+
     for (int n = 0; n < camdata.size(); ++n) //每一帧图像基本都能看见所有的点
     {
         MotionData data = camdata[n];
         Eigen::Matrix4d Twc = Eigen::Matrix4d::Identity();
+        //每一个cam的变换矩阵
         Twc.block(0, 0, 3, 3) = data.Rwb;
         Twc.block(0, 3, 3, 1) = data.twb;
 
@@ -194,7 +200,7 @@ int main()
         std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d>> features_cam; // 对应的２维图像坐标
         for (int i = 0; i < points.size(); ++i)
         {
-            Eigen::Vector4d pw = points[i];           // 最后一位存着feature id
+            Eigen::Vector4d pw = points[i];           // 每一个landmark的世界坐标
             pw[3] = 1;                                //改成齐次坐标最后一位
             Eigen::Vector4d pc1 = Twc.inverse() * pw; // T_wc.inverse() * Pw  -- > point in cam frame
 
@@ -214,16 +220,13 @@ int main()
         std::stringstream filename1;
         filename1 << "keyframe/all_points_" << n << ".txt"; //每一帧图像对应的特征点
 
+        // save_features(filename1.str(), points_cam, features_cam); //
 
-        //save_features(filename1.str(), points_cam, features_cam); //
-       // save_files_list.open(file_list);
-        if (!save_files_list.is_open())
-            std::cout << "can not open the save_points file" << std::endl;
-            save_files_list << camdata[n].timestamp << "\t \t \t" << filename1.str() << std::endl;
-     
-        std::cout << "generate cam " << n << "feature points" << std::endl;
+        save_files_list << camdata[n].timestamp << "\t \t \t" << filename1.str() << std::endl;
+
+        // std::cout << "generate cam " << n << "feature points" << std::endl;
     }
-       save_files_list.close();
+    save_files_list.close();
 
     // lines obs in image　线特征，还没有用到
     for (int n = 0; n < camdata.size(); ++n)
