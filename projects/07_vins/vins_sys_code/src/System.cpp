@@ -16,7 +16,7 @@ System::System(string sConfig_file)
     trackerData[0].readIntrinsicParameter(sConfig_file);
 
     estimator.setParameter();
-    ofs_pose.open("./pose_output.txt", fstream::app | fstream::out);
+    ofs_pose.open("../data/pose_output.txt", fstream::app | fstream::out);
     if (!ofs_pose.is_open())
     {
         cerr << "ofs_pose is not open" << endl;
@@ -279,6 +279,7 @@ vector<pair<vector<ImuConstPtr>, ImgConstPtr>> System::getMeasurements()
         //     << " end: " << IMUs.back()->header
         //     << endl;
         measurements.emplace_back(IMUs, img_msg); //一帧cam和它前面的一组imu
+        
     }
     return measurements;
 }
@@ -346,11 +347,12 @@ void System::ProcessBackEnd()
         });
         if (measurements.size() >= 1)
         {
-            // cout << "1 getMeasurements size: " << measurements.size()
-            //      << " imu size: " << measurements[0].first.size() //这一帧图像前面有多少imu
-            //      << " cam size: " << measurements.size()
-            //      << " feature_buf size: " << feature_buf.size()
-            //      << " imu_buf size: " << imu_buf.size() << endl;
+             cout << "1 getMeasurements size: " << measurements.size()
+                 << " imu size: " << measurements[0].first.size() //这一帧图像前面有多少imu
+                 << " cam size: " << measurements.size()
+                 << " feature_buf size: " << feature_buf.size()
+                 << " imu_buf size: " << imu_buf.size() 
+                 << "\r\n" << endl;
         }
         lk.unlock(); //当getMeasurements　参数传递给measurements后，赶紧让出互斥量，重新获取m_estimator互斥量控制权
         m_estimator.lock();
@@ -511,32 +513,61 @@ void System::Draw()
             glEnd();
         }
 
+        // show the real pose
+        {
+            glPointSize(5);
+            glBegin(GL_POINTS);
+            for (size_t i = 0; i < real_poses.size(); ++i)
+            {
+                Vector3d p_wi = real_poses[i];
+                glColor3f(0, 0, 1);
+                glVertex3d(p_wi[0], p_wi[1], p_wi[2]);
+            }
+            glEnd();
+        }
+
         pangolin::FinishFrame();
         usleep(5000); // sleep 5 ms
     }
 }
 
-void System::midPointIntegration(double _dt, 
-                          Eigen::Vector3d &acc_0,     Eigen::Vector3d &gyro_0,
-                          Eigen::Vector3d &acc_1,     Eigen::Vector3d &gyro_1,
-                          Eigen::Vector3d &acc_bias,  Eigen::Vector3d &gyro_bias,
-                          Eigen::Vector3d &delta_p, Eigen::Quaterniond &delta_q, Eigen::Vector3d &delta_v
-                        )
+void System::midPointIntegration(double _dt,
+                                 Eigen::Vector3d &acc_0, Eigen::Vector3d &gyro_0,
+                                 Eigen::Vector3d &acc_1, Eigen::Vector3d &gyro_1,
+                                 Eigen::Vector3d &acc_bias, Eigen::Vector3d &gyro_bias,
+                                 Eigen::Vector3d &delta_p, Eigen::Quaterniond &delta_q, Eigen::Vector3d &delta_v)
 {
     Eigen::Vector3d un_gyro = 0.5 * (gyro_0 + gyro_1) - gyro_bias;
-    delta_q = delta_q * Eigen::Quaterniond(1, un_gyro(0)*_dt/2, un_gyro(1)*_dt/2, un_gyro(2)*_dt/2);
+    delta_q = delta_q * Eigen::Quaterniond(1, un_gyro(0) * _dt / 2, un_gyro(1) * _dt / 2, un_gyro(2) * _dt / 2);
 
-    Eigen::Vector3d gw(0,0,-9.81);    // ENU frame
+    Eigen::Vector3d gw(0, 0, -9.81); // ENU frame
     Eigen::Vector3d un_acc_0 = delta_q.toRotationMatrix() * (acc_0 - acc_bias) + gw;
     Eigen::Vector3d un_acc_1 = delta_q.toRotationMatrix() * (acc_1 - acc_bias) + gw;
     Eigen::Vector3d un_acc = 0.5 * (un_acc_0 + un_acc_1);
+
+    // △v
+    delta_v = delta_v + un_acc * _dt;
+
+    // △p
+    delta_p = delta_p + delta_v * _dt + 0.5 * un_acc * _dt * _dt;
+}
+
+void System::eulerIntegration(double _dt, 
+                      const Eigen::Vector3d &acc_k,    const Eigen::Vector3d &gyro_k,     // 第k帧 IMU data
+                      const Eigen::Vector3d &acc_bias, const Eigen::Vector3d &gyro_bias,  // IMU 偏置项，这里假定为常数
+                      Eigen::Vector3d &delta_p,  Eigen::Quaterniond &delta_q,  Eigen::Vector3d &delta_v //前一帧result,以及updated当前帧积分result
+                      )
+{
+    Eigen::Vector3d  un_gyro = gyro_k - gyro_bias;  //  w = gyro_body - gyro_bias
+    //  △q  delta_q = [1 , 1/2 * thetax , 1/2 * theta_y, 1/2 * theta_z]
+    delta_q = delta_q * Eigen::Quaterniond(1, un_gyro(0)*_dt/2, un_gyro(1)*_dt/2, un_gyro(2)*_dt/2);
+
+    Eigen::Vector3d gw(0,0,-9.81);    // ENU frame
+    Eigen::Vector3d un_acc = delta_q.toRotationMatrix() * (acc_k) + gw;  // aw = Rwb * ( acc_body - acc_bias ) + gw
 
     // △v
     delta_v = delta_v + un_acc*_dt;
     
     // △p
     delta_p = delta_p + delta_v*_dt + 0.5*un_acc*_dt*_dt;
-
-    imu_integration_poses.push_back(delta_p);
-
-}
+} 

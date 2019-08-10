@@ -48,7 +48,7 @@ void PubImuData()
 	Vector3d vAcc;
 	Vector3d vGyr;
 
-	double lastTime = 0;
+	double lastTime;
 	Vector3d imuPwb;
 	Quaterniond imuQwb;
 	Vector3d imuVwb;
@@ -60,23 +60,64 @@ void PubImuData()
 	while (std::getline(fsImu, sImu_line) && !sImu_line.empty()) // read imu data　every line
 	{
 		std::istringstream ssImuData(sImu_line);
-		ssImuData >> dStampNSec >> q.w() >> q.x() >> q.y() >> q.z() >> t.x() >> t.y() >> t.z() >> vGyr.x() >> vGyr.y() >> vGyr.z() >> vAcc.x() >> vAcc.y() >> vAcc.z();
-		cout << "Imu t: " << fixed << dStampNSec << " gyr: " << vGyr.transpose() << " acc: " << vAcc.transpose() << endl;
+		ssImuData >> dStampNSec 
+				  >> q.w() >> q.x() >> q.y() >> q.z() 
+				  >> t.x() >> t.y() >> t.z() 
+				  >> vGyr.x() >> vGyr.y() >> vGyr.z() 
+				  >> vAcc.x() >> vAcc.y() >> vAcc.z();
+		// cout << "Imu t: " << fixed << dStampNSec << " gyr: " << vGyr.transpose() << " acc: " << vAcc.transpose() << endl;
 		pSystem->PubImuData(dStampNSec, vGyr, vAcc); //带时间戳的IMU数据载入系统，
 
+		//pSystem->real_poses.push_back(t);//可视化imu　real pose
 		//测试imu　积分
-		pSystem->midPointIntegration(dStampNSec - lastTime,
-									 imuAcc, imuGyro,
-									 vAcc, vGyr,
-									 imuBa, imuBg,
-									 imuPwb, imuQwb, imuVwb);
+		// pSystem->midPointIntegration(dStampNSec - lastTime,
+		// 							 imuAcc, imuGyro,
+		// 							 vAcc, vGyr,
+		// 							 imuBa, imuBg,
+		// 							 imuPwb, imuQwb, imuVwb);
+
+		// pSystem->eulerIntegration(dStampNSec - lastTime,
+		// 						  vAcc, vGyr,
+		// 						  imuBa, imuBg,
+		// 						  imuPwb, imuQwb, imuVwb);
+		// pSystem->imu_integration_poses.push_back(imuPwb);//可视化imu积分pos
+
 		lastTime = dStampNSec;
 		imuAcc = vAcc;
 		imuGyro = vGyr;
 
-		usleep(5000 * nDelayTimes);
+		usleep(4500 * nDelayTimes);
 	}
 	fsImu.close();
+}
+
+void PubRealData()
+{
+	string sRealData_file = sData_path +  "cam_pose.txt";
+	ifstream fsPose;
+	fsPose.open(sRealData_file.c_str());
+	if(!fsPose.is_open())
+	{
+		cerr << "Failed to open realPose file! " << sRealData_file << endl;
+		return;
+	}
+	std::string sPose_line;
+	double temp;
+	Vector3d current_pose;
+	while (std::getline(fsPose,sPose_line)&& !sPose_line.empty())
+	{
+		std::istringstream ssPoseData(sPose_line);
+		ssPoseData  >> temp 
+					>> temp >> temp >> temp >> temp
+					>> current_pose.x() >> current_pose.y() >> current_pose.z()
+					>> temp >> temp >> temp
+					>> temp >> temp >> temp;
+
+		pSystem->real_poses.push_back(current_pose);
+		usleep(50000 * nDelayTimes);
+	}
+	
+
 }
 
 //将image载入system
@@ -141,13 +182,17 @@ void PubImageData()
 			landmark.push_back(current_landmark);
 			featurePoint.push_back(current_featurePoint);
 			feature_id.push_back(ids);
+
 			current_featureVelocity.x() = (current_featurePoint.x() - lastfeaturePoint[ids].x()) / (dStampNSec - lastTime);
 			current_featureVelocity.y() = (current_featurePoint.y() - lastfeaturePoint[ids].y()) / (dStampNSec - lastTime);
 			featureVelocity.push_back(current_featureVelocity);
 
-			current_observation_feature = Eigen::Vector3d(current_featurePoint.x(), current_featurePoint.y(), 1);
+			current_observation_feature = Vector3d(current_featurePoint.x(), current_featurePoint.y(), 1);
 			current_observation_feature = K * current_observation_feature;
+
 			observation_feature.push_back(Vector2d(current_observation_feature.x(), current_observation_feature.y()));
+
+
 			// cout << "current observation point: " << current_observation_feature.x() << " " <<current_observation_feature.y() << " "<<current_observation_feature.z() << endl;
 			// cout << "current_camera point: " << current_featurePoint.x() << " " <<current_featurePoint.y()  << endl;
 			// cout << "current velocity point: " << current_featureVelocity.x() << " " <<current_featureVelocity.y() << endl;
@@ -158,22 +203,12 @@ void PubImageData()
 		lastTime = dStampNSec;
 		lastfeaturePoint = featurePoint;
 		pSystem->PubFeatureData(dStampNSec, feature_id, featurePoint, observation_feature, featureVelocity); //带时间戳的feature point数据载入系统，
-		cout << "Image t: " << fixed << dStampNSec << " featurePoint size: " << featurePoint.size() << " observation_feature size: " << observation_feature.size() << endl;
 		usleep(50000 * nDelayTimes);
 	}
 }
 
 int main(int argc, char **argv)
 {
-	// if (argc != 3)
-	// {
-	// 	cerr << "./run_euroc PATH_TO_FOLDER/MH-05/mav0 PATH_TO_CONFIG/config \n"
-	// 		 << "For example: ./run_euroc /home/ubuntu/dataset/EuRoc/MH-05/ ../config/" << endl;
-	// 	return -1;
-	// }
-	// sData_path = argv[1];
-	// sConfig_path = argv[2];
-
 	pSystem.reset(new System(sConfig_file));
 
 	//启动多线程
@@ -181,9 +216,9 @@ int main(int argc, char **argv)
 
 	sleep(1);
 	std::thread thd_PubImuData(PubImuData); //imu数据的预处理－＞imu buf
-
 	std::thread thd_PubImageData(PubImageData); //image数据预处理-> image buf
 
+	std::thread thd_PubRealData(PubRealData); //imu数据的预处理－＞imu buf
 	std::thread thd_Draw(&System::Draw, pSystem); //轨迹实时可视化的线程
 
 	thd_PubImuData.join();

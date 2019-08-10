@@ -163,6 +163,8 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     else
         marginalization_flag = MARGIN_SECOND_NEW; //如果视差太小就把　last second 抹掉
 
+
+    cout << "this frame is--------------------" << (marginalization_flag ? "reject" : "accept") << endl;
     //ROS_DEBUG("this frame is--------------------%s", marginalization_flag ? "reject" : "accept");
     //ROS_DEBUG("%s", marginalization_flag ? "Non-keyframe" : "Keyframe");
     //ROS_DEBUG("Solving %d", frame_count);
@@ -273,7 +275,7 @@ bool Estimator::initialStructure()
     cout << "Initialization: all image frame size: " << all_image_frame.size() << endl;
     //check imu observability
     {
-        cout << "Initialization: check imu observability "<< endl;
+        cout << "Initialization: check imu observability " << endl;
         map<double, ImageFrame>::iterator frame_it;
         Vector3d sum_g;
         for (frame_it = all_image_frame.begin(), frame_it++; frame_it != all_image_frame.end(); frame_it++)
@@ -296,7 +298,7 @@ bool Estimator::initialStructure()
         }
         var = sqrt(var / ((int)all_image_frame.size() - 1));
         //ROS_WARN("IMU variation %f!", var);
-        if (var < 0.25)//imu激励不够，幅度再大一点
+        if (var < 0.25) //imu激励不够，幅度再大一点
         {
             // ROS_INFO("IMU excitation not enough!");
             cout << "IMU excitation not enough" << endl;
@@ -307,8 +309,8 @@ bool Estimator::initialStructure()
     Quaterniond Q[frame_count + 1];
     Vector3d T[frame_count + 1];
     map<int, Vector3d> sfm_tracked_points;
-    vector<SFMFeature> sfm_f;//管理 sfm的特征点，也就是到目前为止的feature list中的点，属性稍微不同
-    cout << "Initialization: global SFM "<< endl;
+    vector<SFMFeature> sfm_f; //管理 sfm的特征点，也就是到目前为止的feature list中的点，属性稍微不同
+    cout << "Initialization: global SFM " << endl;
     for (auto &it_per_id : f_manager.feature)
     {
         int imu_j = it_per_id.start_frame - 1;
@@ -324,7 +326,7 @@ bool Estimator::initialStructure()
         }
         sfm_f.push_back(tmp_feature);
     }
-    cout << "Initialization: all features:" <<f_manager.feature.size() << " sfm_feature: " <<sfm_f.size() << endl;
+    cout << "Initialization: all features:" << f_manager.feature.size() << " sfm_feature: " << sfm_f.size() << endl;
     Matrix3d relative_R;
     Vector3d relative_T;
     int l;
@@ -334,7 +336,7 @@ bool Estimator::initialStructure()
         cout << "Not enough features or parallax; Move device around" << endl;
         return false;
     }
-    cout << "Initialization: according  parallax between "<< l << " with newest frame,5point compute R&t  "<< endl;
+    cout << "Initialization: according  parallax between " << l << " with newest frame,5point compute R&t  " << endl;
     GlobalSFM sfm;
     if (!sfm.construct(frame_count + 1, Q, T, l,
                        relative_R, relative_T,
@@ -352,7 +354,7 @@ bool Estimator::initialStructure()
     for (int i = 0; frame_it != all_image_frame.end(); frame_it++)
     {
         // provide initial guess
-        cout << "Initialization: solve pnp for all frame. frame_it: "<<  frame_it->first << "WINDOW_it: " << Headers[i]  << endl;
+        cout << "Initialization: solve pnp for all frame. frame_it: " << frame_it->first << "WINDOW_it: " << Headers[i] << endl;
         cv::Mat r, rvec, t, D, tmp_r;
         if ((frame_it->first) == Headers[i])
         {
@@ -420,6 +422,7 @@ bool Estimator::initialStructure()
         cout << "misalign visual structure with IMU" << endl;
         return false;
     }
+    return true;
 }
 
 bool Estimator::visualInitialAlign()
@@ -513,6 +516,7 @@ bool Estimator::relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l)
         corres = f_manager.getCorresponding(i, WINDOW_SIZE);
         if (corres.size() > 20)
         {
+            cout << "corres: " << corres.size() << endl;
             double sum_parallax = 0;
             double average_parallax;
             for (int j = 0; j < int(corres.size()); j++)
@@ -530,6 +534,7 @@ bool Estimator::relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l)
                 //ROS_DEBUG("average_parallax %f choose l %d and newest frame to triangulate the whole structure", average_parallax * 460, l);
                 return true;
             }
+            cout << "average parallax: " << average_parallax*460 << endl;
         }
     }
     return false;

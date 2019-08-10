@@ -53,16 +53,21 @@ public:
                     const Eigen::Vector3d &vAcc);
     void PubFeatureData(double dStampSec, const vector<int> &feature_id, const vector<Vector2d> &feature, const vector<Vector2d> &observation, std::vector<Vector2d> &featureVelocity);
 
-        // thread: visual-inertial odometry
-        void ProcessBackEnd();
+    // thread: visual-inertial odometry
+    void ProcessBackEnd();
     void Draw();
 
-    void midPointIntegration(double _dt, 
-                          Eigen::Vector3d &acc_0,     Eigen::Vector3d &gyro_0,
-                          Eigen::Vector3d &acc_1,     Eigen::Vector3d &gyro_1,
-                          Eigen::Vector3d &acc_bias,  Eigen::Vector3d &gyro_bias,
-                          Eigen::Vector3d &delta_p, Eigen::Quaterniond &delta_q, Eigen::Vector3d &delta_v
-                        );
+    void midPointIntegration(double _dt,
+                             Eigen::Vector3d &acc_0, Eigen::Vector3d &gyro_0,
+                             Eigen::Vector3d &acc_1, Eigen::Vector3d &gyro_1,
+                             Eigen::Vector3d &acc_bias, Eigen::Vector3d &gyro_bias,
+                             Eigen::Vector3d &delta_p, Eigen::Quaterniond &delta_q, Eigen::Vector3d &delta_v);
+
+    void eulerIntegration(double _dt,
+                          const Eigen::Vector3d &acc_k, const Eigen::Vector3d &gyro_k,                    // 第k帧 IMU data
+                          const Eigen::Vector3d &acc_bias, const Eigen::Vector3d &gyro_bias,              // IMU 偏置项，这里假定为常数
+                          Eigen::Vector3d &delta_p, Eigen::Quaterniond &delta_q, Eigen::Vector3d &delta_v //前一帧result,以及updated当前帧积分result
+    );
 
 private:
     //feature tracker
@@ -90,10 +95,10 @@ private:
     // std::queue<PointCloudConstPtr> relo_buf;
     int sum_of_wait = 0;
 
-    std::mutex m_buf;// m_buf　保护imu_buf  feature_buf
+    std::mutex m_buf; // m_buf　保护imu_buf  feature_buf
     std::mutex m_state;
     std::mutex i_buf;
-    std::mutex m_estimator;//保护　vector<pair<vector<ImuConstPtr>, ImgConstPtr>> measurements; //一组imu和一帧图像对应的数据
+    std::mutex m_estimator; //保护　vector<pair<vector<ImuConstPtr>, ImgConstPtr>> measurements; //一组imu和一帧图像对应的数据
 
     double latest_time;
     Eigen::Vector3d tmp_P;
@@ -111,5 +116,9 @@ private:
     bool bStart_backend;
     std::vector<std::pair<std::vector<ImuConstPtr>, ImgConstPtr>> getMeasurements();
 
+    
+
+public:
+    vector<Vector3d> real_poses;
     vector<Vector3d> imu_integration_poses;
 };
